@@ -1,5 +1,6 @@
 package de.tfr.tool.ui
 
+import de.tfr.tool.de.tfr.tool.ui.SystemInfoDialog
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
@@ -183,7 +184,13 @@ class MainView : BorderPane() {
         openSettings.setOnAction { showSettingsDialog() }
         einstellungen.items.add(openSettings)
 
-        menuBar.menus.addAll(datei, einstellungen)
+        // Help menu with a System Info dialog
+        val help = Menu(I18n.s("menu.help"))
+        val systemInfo = MenuItem(I18n.s("menu.help.systemInfo"))
+        systemInfo.setOnAction { showSystemInfoDialog() }
+        help.items.add(systemInfo)
+
+        menuBar.menus.addAll(datei, einstellungen, help)
         return menuBar
     }
 
@@ -390,5 +397,12 @@ class MainView : BorderPane() {
     private fun reloadFromDb() {
         disks.set(DiskRepository.loadAll())
         applySortingAndGrouping()
+    }
+
+    /**
+     * Show a simple system information dialog that lists key environment details.
+     */
+    private fun showSystemInfoDialog() {
+        SystemInfoDialog().loadSystemInfo()
     }
 }
