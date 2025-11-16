@@ -1,0 +1,195 @@
+package de.tfr.tool.ui.settings
+
+import de.tfr.tool.persist.Database
+import de.tfr.tool.ui.*
+import javafx.geometry.Insets
+import javafx.geometry.Pos
+import javafx.scene.control.*
+import javafx.scene.layout.HBox
+import javafx.scene.layout.VBox
+import javafx.stage.FileChooser
+import mu.KotlinLogging
+
+data class AppSettings(
+    val equalCardHeights: Boolean,
+    val fixedCardHeightEnabled: Boolean,
+    val fixedCardHeightPx: Double,
+    val theme: Theme,
+    val language: Language,
+    val dbPath: String?,
+    val showHidden: Boolean
+)
+
+data class SettingsResult(
+    val ok: Boolean,
+    val settings: AppSettings,
+    val dbPathChanged: Boolean,
+    val dbCleared: Boolean
+)
+
+object SettingsDialog {
+    // Logger for settings-related actions
+    private val logger = KotlinLogging.logger {}
+
+    fun show(current: AppSettings): SettingsResult {
+        val dlg = Dialog<ButtonType>()
+        dlg.title = I18n.s("settings.title")
+        dlg.headerText = null
+        dlg.dialogPane.buttonTypes.setAll(ButtonType.OK, ButtonType.CANCEL)
+
+        val content = VBox(12.0).apply { padding = Insets(10.0) }
+
+
+        val cbEqual = CheckBox(I18n.s("settings.equalHeight")).apply { isSelected = current.equalCardHeights }
+        val cbFixed = CheckBox(I18n.s("settings.fixedHeight")).apply { isSelected = current.fixedCardHeightEnabled }
+        val tfPx = TextField(String.format("%.0f", current.fixedCardHeightPx)).apply {
+            prefColumnCount = 6
+            isDisable = !cbFixed.isSelected
+        }
+        cbFixed.selectedProperty().addListener { _, _, new -> tfPx.isDisable = !new }
+
+        // Exclusivity of the two checkboxes (UI level)
+        var guard = false
+        cbEqual.selectedProperty().addListener { _, _, new ->
+            if (guard) return@addListener
+            if (new) { guard = true; cbFixed.isSelected = false; guard = false }
+        }
+        cbFixed.selectedProperty().addListener { _, _, new ->
+            if (guard) return@addListener
+            if (new) { guard = true; cbEqual.isSelected = false; guard = false }
+        }
+
+        val rowFixed = HBox(8.0, cbFixed, Label(I18n.s("settings.heightPx")), tfPx).apply { alignment = Pos.CENTER_LEFT }
+
+        // Theme selection with live preview in the dialog
+        val themeLabel = Label(I18n.s("settings.theme"))
+        val themeBox = ComboBox<String>().apply {
+            items.addAll(I18n.s("settings.theme.light"), I18n.s("settings.theme.dark"))
+            selectionModel.select(if (current.theme == Theme.DARK) 1 else 0)
+        }
+        val rowTheme = HBox(8.0, themeLabel, themeBox).apply { alignment = Pos.CENTER_LEFT }
+
+        // Language selection
+        val langLabel = Label(I18n.s("settings.language"))
+        val langBox = ComboBox<String>().apply {
+            items.addAll(I18n.s("settings.language.de"), I18n.s("settings.language.en"))
+            selectionModel.select(if (current.language == Language.EN) 1 else 0)
+        }
+        val rowLang = HBox(8.0, langLabel, langBox).apply { alignment = Pos.CENTER_LEFT }
+
+        // Tracks whether user cleared the DB while dialog was open
+        var dbClearedFlag = false
+
+        // DB file selection (moved to top) and clear button
+        val dbRow = HBox(8.0).apply {
+            alignment = Pos.CENTER_LEFT
+            val lbl = Label(I18n.s("settings.dbPath"))
+            val tf = TextField(current.dbPath ?: "")
+            tf.isEditable = false
+            tf.prefColumnCount = 32
+
+            // Browse button to pick a different DB file
+            val btnBrowse = Button(I18n.s("settings.db.browse"))
+            btnBrowse.setOnAction {
+                val chooser = FileChooser()
+                chooser.title = I18n.s("settings.db.browse")
+                chooser.extensionFilters.addAll(
+                    FileChooser.ExtensionFilter(I18n.s("file.filter.sqlite"), "*.db", "*.sqlite"),
+                    FileChooser.ExtensionFilter(I18n.s("file.filter.all"), "*.*")
+                )
+                val file = chooser.showOpenDialog(dlg.dialogPane.scene?.window)
+                if (file != null) tf.text = file.absolutePath
+            }
+
+            // Clear DB button to remove all data from the current database
+            val btnClear = Button(I18n.s("settings.db.clear"))
+            btnClear.setOnAction {
+                val alert = Alert(Alert.AlertType.CONFIRMATION)
+                alert.title = I18n.s("alert.db.clear.confirm.title")
+                alert.headerText = null
+                alert.contentText = I18n.s("alert.db.clear.confirm.text")
+                // Adapt dialog styling to the current theme
+                styleDialogPane(alert.dialogPane, ThemeManager.currentTheme)
+                val resClear = alert.showAndWait()
+                if (resClear.isPresent && resClear.get() == ButtonType.OK) {
+                    // Log user-confirmed database clear action
+                    val dbPathStr = try { Database.getCurrentDbPath().toString() } catch (_: Exception) { "<unknown>" }
+                    logger.info { "User confirmed clearing database at path: $dbPathStr" }
+                    try {
+                        val (disksDeleted, partsDeleted) = Database.clearAllData()
+                        logger.info { "Database cleared successfully. Disks deleted=$disksDeleted, Partitions deleted=$partsDeleted" }
+                        // Mark that DB has been cleared so caller can react after OK
+                        dbClearedFlag = true
+                        // Note: We cannot reload UI from here; caller should update UI if needed
+                        Alert(Alert.AlertType.INFORMATION, I18n.s("alert.db.clear.success", disksDeleted, partsDeleted)).apply {
+                            styleDialogPane(this.dialogPane, ThemeManager.currentTheme)
+                        }.showAndWait()
+                        // Path remains unchanged; do not auto-seed here
+                    } catch (ex: Exception) {
+                        logger.error(ex) { "Error while clearing database" }
+                        Alert(Alert.AlertType.ERROR, I18n.s("alert.db.clear.error", ex.message ?: "")).apply {
+                            styleDialogPane(this.dialogPane, ThemeManager.currentTheme)
+                        }.showAndWait()
+                    }
+                }
+            }
+
+            children += listOf(lbl, tf, btnBrowse, btnClear)
+        }
+
+        // Toggle "Show hidden" (optionally show/change it in the dialog)
+        val cbShowHidden = CheckBox(I18n.s("btn.showHidden")).apply { isSelected = current.showHidden }
+
+        // Put DB selection at the very top
+        content.children += dbRow
+        content.children += cbEqual
+        content.children += rowFixed
+        content.children += rowTheme
+        content.children += rowLang
+        content.children += cbShowHidden
+        dlg.dialogPane.content = content
+
+        // Adjust the dialog itself to the theme
+        styleDialogPane(dlg.dialogPane, current.theme)
+        // Live preview on theme change inside the dialog
+        themeBox.selectionModel.selectedIndexProperty().addListener { _, _, newIdx ->
+            styleDialogPane(dlg.dialogPane, if (newIdx.toInt() == 1) Theme.DARK else Theme.LIGHT)
+        }
+
+        val res = dlg.showAndWait()
+        if (!res.isPresent || res.get() != ButtonType.OK) {
+            return SettingsResult(false, current, false, dbClearedFlag)
+        }
+
+        val raw = tfPx.text.trim().replace(',', '.')
+        val px = raw.toDoubleOrNull()?.coerceAtLeast(50.0) ?: current.fixedCardHeightPx
+        val selectedTheme = if (themeBox.selectionModel.selectedIndex == 1) Theme.DARK else Theme.LIGHT
+        val selectedLang = if (langBox.selectionModel.selectedIndex == 1) Language.EN else Language.DE
+
+        val newDbPath = (dbRow.children[1] as TextField).text.trim()
+        val dbChanged = (current.dbPath ?: "") != newDbPath
+
+        val newSettings = AppSettings(
+            equalCardHeights = cbEqual.isSelected,
+            fixedCardHeightEnabled = cbFixed.isSelected,
+            fixedCardHeightPx = px,
+            theme = selectedTheme,
+            language = selectedLang,
+            dbPath = newDbPath.ifBlank { null },
+            showHidden = cbShowHidden.isSelected
+        )
+        return SettingsResult(true, newSettings, dbChanged, dbClearedFlag)
+    }
+
+    private fun styleDialogPane(pane: DialogPane, theme: Theme) {
+        val darkUrl = javaClass.getResource("/theme/dark.css")?.toExternalForm()
+        if (darkUrl != null) {
+            if (theme == Theme.DARK) {
+                if (!pane.stylesheets.contains(darkUrl)) pane.stylesheets.add(darkUrl)
+            } else {
+                pane.stylesheets.remove(darkUrl)
+            }
+        }
+    }
+
+}
