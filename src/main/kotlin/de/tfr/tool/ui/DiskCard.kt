@@ -24,6 +24,9 @@ class DiskCard(val disk: Disk) : StackPane() {
     private lateinit var sizeLabelTop: Label
     private lateinit var footerBig: Label
     private lateinit var footerModel: Label
+    // Drive usage bar (overall disk usage at the very bottom)
+    private lateinit var driveBarBg: Rectangle
+    private lateinit var driveBarFill: Rectangle
     // Partition UI references so we can apply the theme live
     private data class PartViews(
         val partBox: VBox,
@@ -187,6 +190,34 @@ class DiskCard(val disk: Disk) : StackPane() {
         card.children += spacer
         card.children += footer
 
+        // --- Drive usage bar (overall) ------------------------------------------------------
+        // Horizontal bar showing used vs size for the whole drive, similar to partitions.
+        // We use an intermediate container (StackPane) whose width is controlled by the VBox.
+        // The rectangles are marked unmanaged and bound to that container's width to avoid
+        // layout feedback loops where children would influence parent's preferred width.
+        val driveBar = StackPane()
+        driveBar.alignment = Pos.CENTER_LEFT
+        driveBar.maxWidth = Double.MAX_VALUE
+
+        driveBarBg = Rectangle(0.0, 6.0, Color.web("#ffd08a"))
+        driveBarFill = Rectangle(0.0, 6.0, Color.web("#f59e42"))
+        driveBarBg.height = 6.0
+        driveBarFill.height = 6.0
+        // Unmanaged so their preferred size does not affect the parent's preferred size
+        driveBarBg.isManaged = false
+        driveBarFill.isManaged = false
+        // Bind widths to the actual laid-out width of the bar
+        driveBarBg.widthProperty().bind(driveBar.widthProperty().subtract(20))
+        driveBarFill.widthProperty().bind(
+            driveBarBg.widthProperty().multiply(disk.usedTB.percentOf(disk.sizeTB))
+        )
+
+        driveBar.children.addAll(driveBarBg, driveBarFill)
+        VBox.setMargin(driveBar, Insets(8.0, 0.0, 0.0, 0.0))
+
+        // Place the drive bar at the very bottom of the card (below footer)
+        card.children += driveBar
+
         outer.children += card
     }
 
@@ -223,6 +254,11 @@ class DiskCard(val disk: Disk) : StackPane() {
                 it.barBg.fill = Color.web("#5a5e60")
                 it.barFill.fill = Color.web("#4aa3ff")
             }
+            // Drive bar colors (dark theme)
+            if (this::driveBarBg.isInitialized) {
+                driveBarBg.fill = Color.web("#5a5e60")
+                driveBarFill.fill = Color.web("#4aa3ff")
+            }
             // Slightly darken the root background
             this.style = "-fx-background-color: transparent;"
         } else {
@@ -240,6 +276,11 @@ class DiskCard(val disk: Disk) : StackPane() {
                 it.sizeLabel.style = "-fx-font-size: 13px; -fx-text-fill: #444;"
                 it.barBg.fill = Color.web("#ffd08a")
                 it.barFill.fill = Color.web("#f59e42")
+            }
+            // Drive bar colors (light theme)
+            if (this::driveBarBg.isInitialized) {
+                driveBarBg.fill = Color.web("#ffd08a")
+                driveBarFill.fill = Color.web("#f59e42")
             }
             this.style = "-fx-background-color: transparent;"
         }
