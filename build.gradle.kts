@@ -35,6 +35,12 @@ kotlin {
 
 application {
     mainClass.set("de.tfr.tool.HardDriveManagerAppKt")
+    // Enable native access for JavaFX graphics module and ALL-UNNAMED (e.g., sqlite-jdbc)
+    // to suppress JDK 22+/24 restricted native access warnings at runtime.
+    applicationDefaultJvmArgs = listOf(
+        "--enable-native-access=javafx.graphics",
+        "--enable-native-access=ALL-UNNAMED",
+    )
 }
 
 javafx {

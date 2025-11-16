@@ -62,6 +62,41 @@ gradlew.bat run
 
 Gradle will download the toolchain, resolve dependencies, and launch the JavaFX application.
 
+### Note about JDK 22+/24 native access warnings
+
+When running on recent JDKs, you may see warnings like:
+
+```
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.glass.utils.NativeLibLoader in module javafx.graphics
+WARNING: Use --enable-native-access=javafx.graphics to avoid a warning for callers in this module
+
+WARNING: java.lang.System::load has been called by org.sqlite.SQLiteJDBCLoader in an unnamed module
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+```
+
+This project already configures these VM options when launched via Gradle (see `build.gradle.kts`):
+
+```
+--enable-native-access=javafx.graphics
+--enable-native-access=ALL-UNNAMED
+```
+
+If you run from your IDE instead of Gradle, set the same VM options in your Run Configuration.
+
+- IntelliJ IDEA: Run/Debug Configurations → VM options:
+  `--enable-native-access=javafx.graphics --enable-native-access=ALL-UNNAMED`
+- Alternatively, set an environment variable before launching:
+  `JDK_JAVA_OPTIONS="--enable-native-access=javafx.graphics --enable-native-access=ALL-UNNAMED"`
+
+You might also see a terminal deprecation warning from the JavaFX Marlin rasterizer regarding `sun.misc.Unsafe::allocateMemory`. This is an upstream JavaFX message and does not impact functionality. To suppress it, this project configures JavaFX/Prism Marlin to use on‑heap buffers (no `Unsafe::allocateMemory`) by default:
+
+```
+-Dprism.marlin.useOffHeap=false
+```
+
+This VM option is already applied when running via Gradle (see `build.gradle.kts`). If you run from your IDE, add it to your Run Configuration alongside the native‑access flags. The warning should then disappear. Future OpenJFX releases may remove the need for this flag.
+
 ### Build
 
 ```
