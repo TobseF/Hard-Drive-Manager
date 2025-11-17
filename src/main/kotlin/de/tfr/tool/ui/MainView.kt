@@ -37,6 +37,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     private val groupBox = ComboBox<String>()
 
     private val tabCards = TabCards()
+    private val tabPartitions = TabPartitions()
     private val tabTable = TabTable(showHiddenProp) { applySortingAndGrouping() }
     private val tabStatistics = TabStatistics()
 
@@ -58,13 +59,26 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         I18n.addListener { applyTranslations() }
         reloadFromDb()
 
-        // Forward card height settings to CardsView
+        // Forward card height settings to CardsView and PartitionsView
         tabCards.setEqualHeightEnabled(equalCardHeightsProp.get())
         tabCards.setFixedHeightEnabled(fixedCardHeightEnabledProp.get())
         tabCards.setFixedHeightPx(fixedCardHeightPxProp.get())
-        equalCardHeightsProp.addListener { _, _, new -> tabCards.setEqualHeightEnabled(new) }
-        fixedCardHeightEnabledProp.addListener { _, _, new -> tabCards.setFixedHeightEnabled(new) }
-        fixedCardHeightPxProp.addListener { _, _, new -> tabCards.setFixedHeightPx(new.toDouble()) }
+        tabPartitions.setEqualHeightEnabled(equalCardHeightsProp.get())
+        tabPartitions.setFixedHeightEnabled(fixedCardHeightEnabledProp.get())
+        tabPartitions.setFixedHeightPx(fixedCardHeightPxProp.get())
+
+        equalCardHeightsProp.addListener { _, _, new ->
+            tabCards.setEqualHeightEnabled(new)
+            tabPartitions.setEqualHeightEnabled(new)
+        }
+        fixedCardHeightEnabledProp.addListener { _, _, new ->
+            tabCards.setFixedHeightEnabled(new)
+            tabPartitions.setFixedHeightEnabled(new)
+        }
+        fixedCardHeightPxProp.addListener { _, _, new ->
+            tabCards.setFixedHeightPx(new.toDouble())
+            tabPartitions.setFixedHeightPx(new.toDouble())
+        }
         // Persist showHidden changes regardless of where they originate (TableView toggle)
         showHiddenProp.addListener { _, _, _ -> savePreferences() }
 
@@ -153,13 +167,16 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         val tabCards = Tab(I18n.s("tab.cards"))
         tabCards.content = this@MainView.tabCards
 
+        val tabPartitions = Tab(I18n.s("tab.partitions"))
+        tabPartitions.content = this@MainView.tabPartitions
+
         val tabTable = Tab(I18n.s("tab.table"))
         tabTable.content = this@MainView.tabTable
 
         val tabStats = Tab(I18n.s("tab.stats"))
         tabStats.content = tabStatistics
 
-        tabs.tabs.addAll(tabCards, tabTable, tabStats)
+        tabs.tabs.addAll(tabCards, tabPartitions, tabTable, tabStats)
         return tabs
     }
 
@@ -211,6 +228,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
         // rebuild cards via CardsView
         tabCards.updateData(list, grouped = groupBox.selectionModel.selectedIndex == 1)
+
+        // rebuild partitions via PartitionsView
+        tabPartitions.updateData(list, grouped = groupBox.selectionModel.selectedIndex == 1)
 
         // rebuild table data via TableView
         tabTable.updateData(list)
@@ -323,6 +343,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
             // Apply changes
             applySortingAndGrouping()
             tabCards.applyEqualHeights()
+            tabPartitions.applyEqualHeights()
         }
 
         savePreferences()
@@ -336,8 +357,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         // We just need to apply window-specific settings
         CustomCaption.setImmersiveDarkMode(primaryStage, theme == Theme.DARK)
 
-        // Update CardsView (DiskCards)
+        // Update CardsView and PartitionsView
         tabCards.applyTheme(theme)
+        tabPartitions.applyTheme(theme)
 
         // Restyle table cells (bars) by refreshing
         tabTable.refresh()
@@ -356,6 +378,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         // Update translations in components
         tabTable.applyTranslations()
         tabCards.applyTranslations()
+        tabPartitions.applyTranslations()
         tabStatistics.applyTranslations()
 
         // Reapply theme so the toolbar style is preserved
