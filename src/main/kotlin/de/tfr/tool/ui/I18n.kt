@@ -27,7 +27,7 @@ object I18n {
 
     private fun loadBundle(lang: Language): ResourceBundle {
         val base = "i18n.messages"
-        val locale = Locale(lang.code)
+        val locale = Locale.forLanguageTag(lang.code)
         return ResourceBundle.getBundle(base, locale, ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT))
     }
 

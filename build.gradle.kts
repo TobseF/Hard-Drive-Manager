@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.2.20"
+    kotlin("jvm") version "2.3.0-Beta2"
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
@@ -34,7 +34,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(24)
+    jvmToolchain(25)
 }
 
 application {
@@ -48,6 +48,6 @@ application {
 }
 
 javafx {
-    version = "23.0.1"
+    version = "25.0.1"
     modules = listOf("javafx.controls", "javafx.graphics", "javafx.swing")
 }
