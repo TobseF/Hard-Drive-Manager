@@ -2,9 +2,9 @@ package de.tfr.tool.persist
 
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
-import de.tfr.tool.model.percentOf
 import oshi.SystemInfo
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 
 /**
  * Reads hardware information via OSHI and performs a non-destructive
@@ -25,9 +25,9 @@ object OshiImporter {
     )
 
     fun readAndMerge(): Result {
-        val si = SystemInfo()
-        val hw = si.hardware
-        val os = si.operatingSystem
+        val systemInfo = SystemInfo()
+        val hardwareAbstractionLayer = systemInfo.hardware
+        val os = systemInfo.operatingSystem
 
         val existing = DiskRepository.loadAll()
         val diskBySerial = existing.associateBy { it.serial.trim().lowercase() }.toMutableMap()
@@ -37,37 +37,39 @@ object OshiImporter {
         val partByUuid = existing.flatMap { it.partitions }.associateBy { it.uuid.trim().lowercase() }.toMutableMap()
         val partByLetter = existing.flatMap { it.partitions }.associateBy { it.letter.trim().lowercase() }.toMutableMap()
 
-        val du = AtomicInteger(0)
-        val di = AtomicInteger(0)
-        val pu = AtomicInteger(0)
-        val pi = AtomicInteger(0)
+        val disksUpdated = AtomicInteger(0)
+        val disksInserted = AtomicInteger(0)
+        val partitionsUpdated = AtomicInteger(0)
+        val partitionsInserted = AtomicInteger(0)
 
         // Dateien-/Volume-Infos (für Partitionen)
-        val fs = os.fileSystem
-        val stores = fs.fileStores
+        val fileSystem = os.fileSystem
+        val stores = fileSystem.fileStores
         // Map nach UUID und Mount
         val storeByUuid = stores.associateBy { (it.uuid ?: "").trim().lowercase() }
         val storeByMount = stores.associateBy { (it.mount ?: it.name ?: "").trim().lowercase() }
 
-        // Disks auslesen
-        val oshiDisks = hw.diskStores
-        oshiDisks.forEach { dstore ->
-            val serial = (dstore.serial ?: "").trim()
-            val model = (dstore.model ?: "").trim()
-            val sizeTB = bytesToTB(dstore.size)
-            val manufacturer = guessManufacturer(model)
-            val type = guessType(model)
 
+        // Disks auslesen
+        val oshiDisks = hardwareAbstractionLayer.diskStores
+        oshiDisks.forEach { diskStore ->
+            val serial = (diskStore.serial ?: "").trim()
+            val modelSystemInfo = (diskStore.model ?: "").trim()
+            val manufacturer = guessManufacturer(modelSystemInfo)
+            val model = parseModel(modelSystemInfo, manufacturer)
+            val sizeTB = bytesToTB(diskStore.size)
+            val type = guessType(model)
             val keySerial = serial.lowercase()
             var disk: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
             if (disk == null) {
                 disk = disksByModelSize[model.lowercase() + "|" + sizeTB.toString()]
             }
 
+            val generatedDriveName = "$manufacturer $type"
             if (disk == null) {
                 // create new
                 val newDisk = Disk().apply {
-                    name = if (model.isNotEmpty()) model else "Disk ${dstore.name}"
+                    name = generatedDriveName
                     this.model = model
                     this.manufacturer = manufacturer
                     this.serial = serial
@@ -81,7 +83,7 @@ object OshiImporter {
                 if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
                 disksByModelSize[model.lowercase() + "|" + sizeTB.toString()] = newDisk
                 disk = newDisk
-                di.incrementAndGet()
+                disksInserted.incrementAndGet()
             } else {
                 // complement/update
                 var changed = false
@@ -90,11 +92,12 @@ object OshiImporter {
                 if (disk.manufacturer.isBlank() && manufacturer.isNotEmpty()) { disk.manufacturer = manufacturer; changed = true }
                 if (disk.serial.isBlank() && serial.isNotEmpty()) { disk.serial = serial; changed = true }
                 if (disk.type.isBlank() && type.isNotEmpty()) { disk.type = type; changed = true }
-                if (changed) { DiskRepository.updateDisk(disk); du.incrementAndGet() }
+                if (disk.name.isBlank()) { disk.name = generatedDriveName; changed = true }
+                if (changed) { DiskRepository.updateDisk(disk); disksUpdated.incrementAndGet() }
             }
 
             // Map partitions
-            dstore.partitions.forEach { part ->
+            diskStore.partitions.forEach { part ->
                 val uuid = (part.uuid ?: "").trim()
                 val mount = (part.mountPoint ?: part.identification ?: "").trim()
                 val pSizeTB = bytesToTB(part.size)
@@ -105,25 +108,31 @@ object OshiImporter {
                     mount.isNotEmpty() && storeByMount.containsKey(mount.lowercase()) -> storeByMount[mount.lowercase()]
                     else -> null
                 }
+                var label = ""
+                var mountPoint = ""
                 if (store != null) {
                     usedTB = bytesToTB(store.totalSpace - store.usableSpace)
+                    label = store.label
+                    mountPoint = store.mount
                 }
+                val driveLetter = extractWindowsLetter(mountPoint)
+
 
                 val keyUuid = uuid.lowercase()
-                var p: Partition? = if (keyUuid.isNotEmpty()) partByUuid[keyUuid] else null
-                if (p == null && mount.isNotEmpty()) {
-                    val letter = extractWindowsLetter(mount)
-                    if (letter.isNotEmpty()) p = partByLetter[letter.lowercase()]
+                var partitionFromDB: Partition? = if (keyUuid.isNotEmpty()) partByUuid[keyUuid] else null
+                if (partitionFromDB == null && driveLetter.isNotEmpty()) {
+                    if (driveLetter.isNotEmpty()) partitionFromDB = partByLetter[driveLetter.lowercase()]
                 }
 
-                if (p == null) {
+
+                if (partitionFromDB == null) {
                     val outerUsed = usedTB
                     val outerUuid = uuid
                     val fsTypeStr = store?.type ?: ""
-                    val newP = Partition().apply {
-                        this.diskId = disk!!.id
-                        this.name = buildPartitionName(mount)
-                        this.letter = extractWindowsLetter(mount)
+                    val newPartition = Partition().apply {
+                        this.diskId = disk.id
+                        this.name = label
+                        this.letter = driveLetter
                         this.type = "Partition"
                         this.sizeTB = pSizeTB
                         this.usedTB = outerUsed
@@ -131,29 +140,47 @@ object OshiImporter {
                         this.fsType = fsTypeStr
                         this.tags = ""
                     }
-                    val pid = DiskRepository.insertPartition(newP)
-                    newP.id = pid
-                    disk!!.partitions += newP
-                    if (outerUuid.isNotEmpty()) partByUuid[outerUuid.lowercase()] = newP
-                    if (newP.letter.isNotBlank()) partByLetter[newP.letter.lowercase()] = newP
-                    pi.incrementAndGet()
+                    val pid = DiskRepository.insertPartition(newPartition)
+                    newPartition.id = pid
+                    disk.partitions += newPartition
+                    if (outerUuid.isNotEmpty()) partByUuid[outerUuid.lowercase()] = newPartition
+                    if (newPartition.letter.isNotBlank()) partByLetter[newPartition.letter.lowercase()] = newPartition
+                    partitionsInserted.incrementAndGet()
                 } else {
                     var changed = false
-                    if (p.diskId != disk!!.id) { p.diskId = disk.id; changed = true }
-                    if (p.sizeTB != pSizeTB && pSizeTB > 0) { p.sizeTB = pSizeTB; changed = true }
-                    if (usedTB >= 0.0 && Math.abs(p.usedTB - usedTB) > 0.0001) { p.usedTB = usedTB; changed = true }
-                    if (p.uuid.isBlank() && uuid.isNotEmpty()) { p.uuid = uuid; changed = true }
+                    if (partitionFromDB.diskId != disk.id) { partitionFromDB.diskId = disk.id; changed = true }
+                    if (partitionFromDB.name != label) { partitionFromDB.name = label; changed = true }
+                    if (partitionFromDB.sizeTB != pSizeTB && pSizeTB > 0) { partitionFromDB.sizeTB = pSizeTB; changed = true }
+                    if (usedTB >= 0.0 && abs(partitionFromDB.usedTB - usedTB) > 0.0001) { partitionFromDB.usedTB = usedTB; changed = true }
+                    if (partitionFromDB.uuid.isBlank() && uuid.isNotEmpty()) { partitionFromDB.uuid = uuid; changed = true }
                     val letter = extractWindowsLetter(mount)
-                    if (p.letter.isBlank() && letter.isNotEmpty()) { p.letter = letter; changed = true }
+                    if (partitionFromDB.letter.isBlank() && letter.isNotEmpty()) { partitionFromDB.letter = letter; changed = true }
                     val fsType = store?.type ?: ""
-                    if (p.fsType.isBlank() && fsType.isNotEmpty()) { p.fsType = fsType; changed = true }
-                    if (changed) { DiskRepository.updatePartition(p); pu.incrementAndGet() }
+                    if (partitionFromDB.fsType.isBlank() && fsType.isNotEmpty()) { partitionFromDB.fsType = fsType; changed = true }
+                    if (changed) { DiskRepository.updatePartition(partitionFromDB); partitionsUpdated.incrementAndGet() }
                 }
             }
         }
 
-        return Result(du.get(), di.get(), pu.get(), pi.get())
+        return Result(disksUpdated.get(), disksInserted.get(), partitionsUpdated.get(), partitionsInserted.get())
     }
+
+    /**
+     * Reads the model name out of the localized system model info.
+     *
+     * For example, input: `TOSHIBA MG09ACA18TE (Standardlaufwerke)`
+     *
+     * Output: `MG09ACA18TE`
+     */
+    private fun parseModel(model: String, manufacturer: String): String{
+        val modelWithoutInfo = model.substringBefore("(").trim()
+        if(manufacturer.isEmpty()){
+            return modelWithoutInfo;
+        }else{
+            return modelWithoutInfo.replace(manufacturer, "", ignoreCase = true).trim()
+        }
+    }
+
 
     private fun bytesToTB(bytes: Long): Double {
         if (bytes <= 0) return 0.0
@@ -185,7 +212,7 @@ object OshiImporter {
     private fun extractWindowsLetter(mount: String): String {
         // Example: "C:\\" → "C"
         val trimmed = mount.trim()
-        return if (trimmed.length >= 2 && trimmed[1] == ':') trimmed.substring(0, 1).uppercase() else ""
+        return trimmed.substringBefore(":").uppercase()
     }
 
     private fun buildPartitionName(mount: String): String {
