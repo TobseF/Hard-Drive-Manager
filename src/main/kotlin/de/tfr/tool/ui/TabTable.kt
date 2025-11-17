@@ -29,6 +29,9 @@ class TabTable(
     // Expose the TreeTableView for external usages (e.g., CSV export)
     val tree: TreeTableView<Any> = TreeTableView()
 
+    // Property to control showing only partitions (hiding disks)
+    private val onlyPartitionsProp = SimpleBooleanProperty(false)
+
     // Toolbar controls need to update texts on language change
     private val editBtn = ToggleButton()
     private val addDiskBtn = Button()
@@ -37,6 +40,7 @@ class TabTable(
     private val expandAllBtn = Button()
     private val collapseAllBtn = Button()
     private val toggleHidden = ToggleButton()
+    private val toggleOnlyPartitions = ToggleButton()
 
     // Keep references to important columns to update captions on translation/theme changes
     private lateinit var nameCol: TreeTableColumn<Any, String>
@@ -66,6 +70,11 @@ class TabTable(
         children += buildToolbar()
         VBox.setVgrow(buildTable(), Priority.ALWAYS)
         children += tree
+
+        // Reload table when "only partitions" setting changes
+        onlyPartitionsProp.addListener { _, _, _ ->
+            updateData(currentDisks)
+        }
     }
 
     private fun buildToolbar(): Node {
@@ -99,6 +108,9 @@ class TabTable(
             toggleHidden.text = if (selected) I18n.s("btn.hideHidden") else I18n.s("btn.showHidden")
         }
 
+        toggleOnlyPartitions.selectedProperty().bindBidirectional(onlyPartitionsProp)
+        toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
+
         row.children += listOf(
             editBtn,
             Separator(),
@@ -109,7 +121,8 @@ class TabTable(
             expandAllBtn,
             collapseAllBtn,
             Separator(),
-            toggleHidden
+            toggleHidden,
+            toggleOnlyPartitions
         )
         return row
     }
@@ -622,6 +635,7 @@ class TabTable(
         expandAllBtn.text = I18n.s("btn.expand.all")
         collapseAllBtn.text = I18n.s("btn.collapse.all")
         toggleHidden.text = if (toggleHidden.isSelected) I18n.s("btn.hideHidden") else I18n.s("btn.showHidden")
+        toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
 
         // Columns
         nameCol.text = I18n.s("col.name")
@@ -648,12 +662,28 @@ class TabTable(
         this.currentDisks = disks
         val root = TreeItem<Any>("root")
         val showAll = showHiddenProp.get()
-        disks.forEach { d ->
-            if (!showAll && d.hidden) return@forEach
-            val diskItem = TreeItem<Any>(d)
-            d.partitions.forEach { p -> if (showAll || !p.hidden) diskItem.children += TreeItem<Any>(p) }
-            root.children += diskItem
+        val onlyPartitions = onlyPartitionsProp.get()
+
+        if (onlyPartitions) {
+            // Show only partitions (no disk nodes)
+            disks.forEach { d ->
+                if (!showAll && d.hidden) return@forEach
+                d.partitions.forEach { p ->
+                    if (showAll || !p.hidden) {
+                        root.children += TreeItem<Any>(p)
+                    }
+                }
+            }
+        } else {
+            // Show disks with their partitions (normal tree structure)
+            disks.forEach { d ->
+                if (!showAll && d.hidden) return@forEach
+                val diskItem = TreeItem<Any>(d)
+                d.partitions.forEach { p -> if (showAll || !p.hidden) diskItem.children += TreeItem<Any>(p) }
+                root.children += diskItem
+            }
         }
+
         tree.root = root
         tree.root.isExpanded = true
     }
