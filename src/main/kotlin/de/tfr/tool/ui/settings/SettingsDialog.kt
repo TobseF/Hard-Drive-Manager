@@ -8,7 +8,9 @@ import javafx.scene.control.*
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.stage.FileChooser
+import javafx.stage.Stage
 import mu.KotlinLogging
+import net.yetihafen.javafx.customcaption.CustomCaption
 
 data class AppSettings(
     val equalCardHeights: Boolean,
@@ -109,8 +111,7 @@ object SettingsDialog {
                 alert.headerText = null
                 alert.contentText = I18n.s("alert.db.clear.confirm.text")
                 // Adapt dialog styling to the current theme
-                styleDialogPane(alert.dialogPane, ThemeManager.currentTheme)
-                val resClear = alert.showAndWait()
+                val resClear = DialogHelper.showAlert(alert, ThemeManager.currentTheme == Theme.DARK)
                 if (resClear.isPresent && resClear.get() == ButtonType.OK) {
                     // Log user-confirmed database clear action
                     val dbPathStr = try { Database.getCurrentDbPath().toString() } catch (_: Exception) { "<unknown>" }
@@ -121,15 +122,17 @@ object SettingsDialog {
                         // Mark that DB has been cleared so caller can react after OK
                         dbClearedFlag = true
                         // Note: We cannot reload UI from here; caller should update UI if needed
-                        Alert(Alert.AlertType.INFORMATION, I18n.s("alert.db.clear.success", disksDeleted, partsDeleted)).apply {
-                            styleDialogPane(this.dialogPane, ThemeManager.currentTheme)
-                        }.showAndWait()
+                        DialogHelper.showAlert(
+                            Alert(Alert.AlertType.INFORMATION, I18n.s("alert.db.clear.success", disksDeleted, partsDeleted)),
+                            ThemeManager.currentTheme == Theme.DARK
+                        )
                         // Path remains unchanged; do not auto-seed here
                     } catch (ex: Exception) {
                         logger.error(ex) { "Error while clearing database" }
-                        Alert(Alert.AlertType.ERROR, I18n.s("alert.db.clear.error", ex.message ?: "")).apply {
-                            styleDialogPane(this.dialogPane, ThemeManager.currentTheme)
-                        }.showAndWait()
+                        DialogHelper.showAlert(
+                            Alert(Alert.AlertType.ERROR, I18n.s("alert.db.clear.error", ex.message ?: "")),
+                            ThemeManager.currentTheme == Theme.DARK
+                        )
                     }
                 }
             }
@@ -149,15 +152,24 @@ object SettingsDialog {
         content.children += cbShowHidden
         dlg.dialogPane.content = content
 
-        // Adjust the dialog itself to the theme
-        styleDialogPane(dlg.dialogPane, current.theme)
         // Live preview on theme change inside the dialog
         themeBox.selectionModel.selectedIndexProperty().addListener { _, _, newIdx ->
-            styleDialogPane(dlg.dialogPane, if (newIdx.toInt() == 1) Theme.DARK else Theme.LIGHT)
+            val previewTheme = if (newIdx.toInt() == 1) Theme.DARK else Theme.LIGHT
+            ThemeManager.setTheme(previewTheme)
+
+            // Update dialog title bar for the new theme
+            javafx.application.Platform.runLater {
+                val window = dlg.dialogPane.scene?.window
+                if (window is Stage) {
+                    CustomCaption.setImmersiveDarkMode(window, previewTheme == Theme.DARK)
+                }
+            }
         }
 
-        val res = dlg.showAndWait()
+        val res = DialogHelper.showDialog(dlg, current.theme == Theme.DARK)
         if (!res.isPresent || res.get() != ButtonType.OK) {
+            // Restore original theme if user cancelled
+            ThemeManager.setTheme(current.theme)
             return SettingsResult(false, current, false, dbClearedFlag)
         }
 
@@ -179,17 +191,6 @@ object SettingsDialog {
             showHidden = cbShowHidden.isSelected
         )
         return SettingsResult(true, newSettings, dbChanged, dbClearedFlag)
-    }
-
-    private fun styleDialogPane(pane: DialogPane, theme: Theme) {
-        val darkUrl = javaClass.getResource("/theme/dark.css")?.toExternalForm()
-        if (darkUrl != null) {
-            if (theme == Theme.DARK) {
-                if (!pane.stylesheets.contains(darkUrl)) pane.stylesheets.add(darkUrl)
-            } else {
-                pane.stylesheets.remove(darkUrl)
-            }
-        }
     }
 
 }

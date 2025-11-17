@@ -23,6 +23,8 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.16")
     // Title bar theming
     implementation("net.yetihafen:javafx-customcaption:1.0.1")
+    // AtlantaFX theme library
+    implementation("io.github.mkpaz:atlantafx-base:2.0.1")
 
     testImplementation(kotlin("test"))
 }

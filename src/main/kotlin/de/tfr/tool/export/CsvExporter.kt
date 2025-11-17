@@ -4,7 +4,10 @@ import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.model.percentOf
 import de.tfr.tool.model.toTBString
+import de.tfr.tool.ui.DialogHelper
 import de.tfr.tool.ui.I18n
+import de.tfr.tool.ui.Theme
+import de.tfr.tool.ui.ThemeManager
 import javafx.scene.control.Alert
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.control.TreeTableView
@@ -94,9 +97,15 @@ object CsvExporter {
         val file: File = chooser.showSaveDialog(owner) ?: return
         try {
             file.writeText(lines.joinToString(System.lineSeparator()), Charsets.UTF_8)
-            Alert(AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)).showAndWait()
+            DialogHelper.showAlert(
+                Alert(AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)),
+                ThemeManager.currentTheme == Theme.DARK
+            )
         } catch (ex: Exception) {
-            Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")).showAndWait()
+            DialogHelper.showAlert(
+                Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
+                ThemeManager.currentTheme == Theme.DARK
+            )
         }
     }
 }

@@ -8,6 +8,7 @@ import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
 import javafx.scene.layout.GridPane
 import java.lang.module.ModuleDescriptor
+import java.util.*
 import java.util.function.Function
 
 
@@ -47,14 +48,6 @@ class SystemInfoDialog : Dialog<ButtonType>(){
         dialogPane.buttonTypes.setAll(copyButtonType, closeButtonType)
         dialogPane.content = grid
 
-        // Style dialog according to current theme and keep it in sync
-        styleDialogPane(dialogPane, ThemeManager.currentTheme)
-        val themeListener: (Theme) -> Unit = { theme -> styleDialogPane(dialogPane, theme) }
-        ThemeManager.addListener(themeListener)
-        // Ensure we don't leak the listener after the dialog is closed
-        setOnHidden { ThemeManager.removeListener(themeListener) }
-
-
         // Copy handler: join as lines "Key: Value" to clipboard
         (dialogPane.lookupButton(copyButtonType) as? Button)?.setOnAction {
             val text = rows.joinToString("\n") { (k, v) -> "$k: $v" }
@@ -62,14 +55,22 @@ class SystemInfoDialog : Dialog<ButtonType>(){
             val content = ClipboardContent()
             content.putString(text)
             clipboard.setContent(content)
-            Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied")).apply {
-                styleDialogPane(this.dialogPane, ThemeManager.currentTheme)
-            }.showAndWait()
+            DialogHelper.showAlert(
+                Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied")),
+                ThemeManager.currentTheme == Theme.DARK
+            )
         }
 
         // Ensure that closing via window 'X' works even without selecting a button
         // (showAndWait will just return Optional.empty in that case)
         setResultConverter { dialogButton: ButtonType? -> dialogButton }
+    }
+
+    /**
+     * Shows the dialog with correct dark mode title bar.
+     */
+    fun showDialog(): Optional<ButtonType> {
+        return DialogHelper.showDialog(this, ThemeManager.currentTheme == Theme.DARK)
     }
 
     class SystemInfo(val osName: String, val osVersion: String, val osArch: String, val javaVersion: String, val javafxVersion: String)
@@ -85,16 +86,5 @@ class SystemInfoDialog : Dialog<ButtonType>(){
             .map(Function { obj: ModuleDescriptor.Version? -> obj.toString() }) // Konvertiert java.lang.module.ModuleDescriptor.Version zu String
             .orElse("")
         return SystemInfo(osName, osVersion, osArch, javaVersion, javafxVersion)
-    }
-
-    private fun styleDialogPane(pane: DialogPane, theme: Theme) {
-        val darkUrl = javaClass.getResource("/theme/dark.css")?.toExternalForm()
-        if (darkUrl != null) {
-            if (theme == Theme.DARK) {
-                if (!pane.stylesheets.contains(darkUrl)) pane.stylesheets.add(darkUrl)
-            } else {
-                pane.stylesheets.remove(darkUrl)
-            }
-        }
     }
 }

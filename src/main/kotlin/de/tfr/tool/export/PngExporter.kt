@@ -1,6 +1,9 @@
 package de.tfr.tool.export
 
+import de.tfr.tool.ui.DialogHelper
 import de.tfr.tool.ui.I18n
+import de.tfr.tool.ui.Theme
+import de.tfr.tool.ui.ThemeManager
 import javafx.embed.swing.SwingFXUtils
 import javafx.scene.Node
 import javafx.scene.SnapshotParameters
@@ -17,7 +20,10 @@ import javax.imageio.ImageIO
 object PngExporter {
     fun exportCardsAsPng(node: Node, owner: Window?) {
         if (node.boundsInParent.width <= 0.0 || node.boundsInParent.height <= 0.0) {
-            Alert(Alert.AlertType.INFORMATION, I18n.s("alert.info.noCards")).showAndWait()
+            DialogHelper.showAlert(
+                Alert(Alert.AlertType.INFORMATION, I18n.s("alert.info.noCards")),
+                ThemeManager.currentTheme == Theme.DARK
+            )
             return
         }
 
@@ -32,9 +38,15 @@ object PngExporter {
             val image = node.snapshot(params, null as WritableImage?)
             val buffered = SwingFXUtils.fromFXImage(image, null)
             ImageIO.write(buffered, "png", file)
-            Alert(Alert.AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)).showAndWait()
+            DialogHelper.showAlert(
+                Alert(Alert.AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)),
+                ThemeManager.currentTheme == Theme.DARK
+            )
         } catch (ex: Exception) {
-            Alert(Alert.AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")).showAndWait()
+            DialogHelper.showAlert(
+                Alert(Alert.AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
+                ThemeManager.currentTheme == Theme.DARK
+            )
         }
     }
 }

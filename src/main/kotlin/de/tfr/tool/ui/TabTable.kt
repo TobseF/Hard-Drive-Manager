@@ -736,7 +736,7 @@ class TabTable(
         alert.title = I18n.s("alert.delete.title")
         alert.headerText = null
         alert.contentText = what
-        val res = alert.showAndWait()
+        val res = DialogHelper.showAlert(alert, ThemeManager.currentTheme == Theme.DARK)
         if (res.isPresent && res.get() == ButtonType.OK) {
             when (v) {
                 is Disk -> DiskRepository.deleteDisk(v.id)

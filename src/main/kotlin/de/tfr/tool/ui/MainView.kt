@@ -3,24 +3,24 @@ package de.tfr.tool.ui
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
+import de.tfr.tool.persist.Database
+import de.tfr.tool.persist.DiskRepository
+import de.tfr.tool.ui.settings.AppSettings
+import de.tfr.tool.ui.settings.SettingsDialog
 import javafx.application.Platform
-import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleDoubleProperty
+import javafx.beans.property.SimpleObjectProperty
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.*
-import javafx.scene.layout.*
-import de.tfr.tool.persist.DiskRepository
-import de.tfr.tool.persist.Database
-import de.tfr.tool.ui.settings.AppSettings
-import de.tfr.tool.ui.settings.SettingsDialog
 import javafx.scene.control.Alert.AlertType
+import javafx.scene.layout.*
 import javafx.stage.Stage
 import net.yetihafen.javafx.customcaption.CustomCaption
-import java.util.prefs.Preferences
 import java.nio.file.Paths
+import java.util.prefs.Preferences
 
 class MainView(private val primaryStage: Stage) : BorderPane() {
     private val disks = SimpleObjectProperty<MutableList<Disk>>(mutableListOf())
@@ -305,9 +305,15 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
                     DiskRepository.seedIfEmpty()
                 }
                 reloadFromDb()
-                Alert(AlertType.INFORMATION, I18n.s("alert.db.switched", Database.getCurrentDbPath().toString())).showAndWait()
+                DialogHelper.showAlert(
+                    Alert(AlertType.INFORMATION, I18n.s("alert.db.switched", Database.getCurrentDbPath().toString())),
+                    ThemeManager.currentTheme == Theme.DARK
+                )
             } catch (ex: Exception) {
-                Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")).showAndWait()
+                DialogHelper.showAlert(
+                    Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
+                    ThemeManager.currentTheme == Theme.DARK
+                )
             }
         } else if (result.dbCleared) {
             // If DB was cleared from within the settings dialog, reload the UI to reflect empty state
@@ -325,29 +331,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
     // -- Theme ---------------------------------------------------------------------------------
     fun applyTheme(theme: Theme = themeProp.get()) {
-        // Toggle stylesheet
-        val darkUrl = javaClass.getResource("/theme/dark.css")?.toExternalForm()
-        val sheets = scene?.stylesheets
-        if (darkUrl != null && sheets != null) {
-            if (theme == Theme.DARK) {
-                CustomCaption.setImmersiveDarkMode(primaryStage, true)
-                if (!sheets.contains(darkUrl)) sheets.add(darkUrl)
-            } else {
-                CustomCaption.setImmersiveDarkMode(primaryStage, false)
-                sheets.remove(darkUrl)
-            }
-        } else {
-            // If the scene does not exist yet, apply later
-            sceneProperty().addListener { _, _, _ -> applyTheme(theme) }
-        }
-
-        // Colorize toolbar
-        if (this::toolbar.isInitialized) {
-            toolbar.style = if (theme == Theme.DARK)
-                "-fx-background-color: #2b2b2b; -fx-border-color: #3c3f41; -fx-border-width: 0 0 1 0; -fx-text-fill: #e0e0e0;"
-            else
-                "-fx-background-color: #f3f3f3; -fx-border-color: #d0d0d0; -fx-border-width: 0 0 1 0;"
-        }
+        // AtlantaFX manages the theme globally via Application.setUserAgentStylesheet
+        // We just need to apply window-specific settings
+        CustomCaption.setImmersiveDarkMode(primaryStage, theme == Theme.DARK)
 
         // Update CardsView (DiskCards)
         tabCards.applyTheme(theme)
@@ -383,7 +369,10 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     private fun exportCardsAsPng() {
         // Determine the content node of the cards view (first child, not the scroll viewport)
         val contentNode = tabCards.getSnapshotContent() ?: run {
-            Alert(AlertType.INFORMATION, I18n.s("alert.info.noCards")).showAndWait()
+            DialogHelper.showAlert(
+                Alert(AlertType.INFORMATION, I18n.s("alert.info.noCards")),
+                ThemeManager.currentTheme == Theme.DARK
+            )
             return
         }
         PngExporter.exportCardsAsPng(contentNode, scene?.window)
@@ -407,6 +396,6 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
      * Show a simple system information dialog that lists key environment details.
      */
     private fun showSystemInfoDialog() {
-        SystemInfoDialog().showAndWait()
+        SystemInfoDialog().showDialog()
     }
 }

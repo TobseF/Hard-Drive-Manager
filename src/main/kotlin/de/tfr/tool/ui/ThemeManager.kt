@@ -1,5 +1,6 @@
 package de.tfr.tool.ui
 
+import javafx.application.Application
 import java.util.concurrent.CopyOnWriteArrayList
 
 object ThemeManager {
@@ -12,6 +13,8 @@ object ThemeManager {
     fun setTheme(theme: Theme) {
         if (theme == currentTheme) return
         currentTheme = theme
+        // Apply AtlantaFX theme globally
+        Application.setUserAgentStylesheet(theme.atlantaFxTheme.userAgentStylesheet)
         listeners.forEach { it(theme) }
     }
 
