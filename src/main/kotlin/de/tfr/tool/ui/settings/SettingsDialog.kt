@@ -166,10 +166,34 @@ object SettingsDialog {
             }
         }
 
+        // Live preview on language change inside the dialog
+        langBox.selectionModel.selectedIndexProperty().addListener { _, _, newIdx ->
+            val previewLang = if (newIdx.toInt() == 1) Language.EN else Language.DE
+            I18n.setLanguage(previewLang)
+
+            // Update all labels and buttons with new language
+            dlg.title = I18n.s("settings.title")
+            cbEqual.text = I18n.s("settings.equalHeight")
+            cbFixed.text = I18n.s("settings.fixedHeight")
+            (rowFixed.children[1] as Label).text = I18n.s("settings.heightPx")
+            themeLabel.text = I18n.s("settings.theme")
+            val currentThemeSelection = themeBox.selectionModel.selectedIndex
+            themeBox.items.setAll(I18n.s("settings.theme.light"), I18n.s("settings.theme.dark"))
+            themeBox.selectionModel.select(currentThemeSelection) // Keep current selection
+            langLabel.text = I18n.s("settings.language")
+            langBox.items.setAll(I18n.s("settings.language.de"), I18n.s("settings.language.en"))
+            langBox.selectionModel.select(newIdx.toInt()) // Keep current selection
+            (dbRow.children[0] as Label).text = I18n.s("settings.dbPath")
+            (dbRow.children[2] as Button).text = I18n.s("settings.db.browse")
+            (dbRow.children[3] as Button).text = I18n.s("settings.db.clear")
+            cbShowHidden.text = I18n.s("btn.showHidden")
+        }
+
         val res = DialogHelper.showDialog(dlg, current.theme == Theme.DARK)
         if (!res.isPresent || res.get() != ButtonType.OK) {
-            // Restore original theme if user cancelled
+            // Restore original theme and language if user cancelled
             ThemeManager.setTheme(current.theme)
+            I18n.setLanguage(current.language)
             return SettingsResult(false, current, false, dbClearedFlag)
         }
 

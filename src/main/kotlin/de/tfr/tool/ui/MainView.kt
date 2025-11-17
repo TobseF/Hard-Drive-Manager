@@ -81,6 +81,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
                 try { equalCardHeightsProp.set(false) } finally { exclusiveToggleGuard = false }
             }
         }
+        applyTranslations()
     }
 
     private lateinit var toolbar: HBox
@@ -351,16 +352,17 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         }
         // Rebuild tabs (uses existing components)
         center = buildTabs()
-        // Update statistics translations
-        tabStatistics.applyTranslations()
-        // Update TableView translations
+
+        // Update translations in components
         tabTable.applyTranslations()
-        // Update CardsView translations
         tabCards.applyTranslations()
+        tabStatistics.applyTranslations()
 
         // Reapply theme so the toolbar style is preserved
         applyTheme(themeProp.get())
+
         // Rebuild contents according to the language if needed
+        // This updates all data with the new language
         applySortingAndGrouping()
     }
 
