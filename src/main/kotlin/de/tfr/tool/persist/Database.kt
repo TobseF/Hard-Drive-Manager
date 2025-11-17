@@ -177,4 +177,10 @@ object Database {
     }
 
     fun getCurrentDbPath(): Path = (dbPathOverride ?: defaultDbPath()).toAbsolutePath()
+
+    fun getCurrentDbPathAsString(): String = try {
+        getCurrentDbPath().toString()
+    } catch (e: Exception) {
+        ""
+    }
 }

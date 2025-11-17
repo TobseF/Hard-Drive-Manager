@@ -1,24 +1,26 @@
 package de.tfr.tool
 
-import javafx.application.Application
-import javafx.scene.Scene
-import javafx.stage.Stage
-import de.tfr.tool.ui.MainView
+import de.tfr.tool.de.tfr.tool.persist.Settings
 import de.tfr.tool.persist.Database
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.I18n
-import java.nio.file.Paths
-import java.util.prefs.Preferences
+import de.tfr.tool.ui.MainView
+import javafx.application.Application
+import javafx.scene.Scene
+import javafx.stage.Stage
 import java.nio.file.Files
+import java.nio.file.Paths
 
 class HardDriveManagerApp : Application() {
     override fun start(primaryStage: Stage) {
         // Before initialization: load custom DB path (if exists)
         run {
-            val prefs = Preferences.userRoot().node("de/tfr/tool/harddrivemanager")
-            val p = prefs.get("db.path", "").trim()
-            if (p.isNotEmpty()) {
-                try { Database.setDatabaseFile(Paths.get(p)) } catch (_: Exception) {}
+            val path = Settings.dbPath
+            if (path.isNotEmpty()) {
+                try {
+                    Database.setDatabaseFile(Paths.get(path))
+                } catch (_: Exception) {
+                }
             }
         }
         // Initialize DB schema and load seed data only when creating DB for the first time

@@ -1,5 +1,6 @@
 package de.tfr.tool.ui
 
+import de.tfr.tool.de.tfr.tool.persist.Settings
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
@@ -20,7 +21,6 @@ import javafx.scene.layout.*
 import javafx.stage.Stage
 import net.yetihafen.javafx.customcaption.CustomCaption
 import java.nio.file.Paths
-import java.util.prefs.Preferences
 
 class MainView(private val primaryStage: Stage) : BorderPane() {
     private val disks = SimpleObjectProperty<MutableList<Disk>>(mutableListOf())
@@ -38,7 +38,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
     private val tabCards = TabCards()
     private val tabPartitions = TabPartitions()
-    private val tabTable = TabTable(showHiddenProp) { applySortingAndGrouping() }
+    private val tabTable = TabTable(showHiddenProp) { reloadFromDb() }
     private val tabStatistics = TabStatistics()
 
     init {
@@ -243,22 +243,18 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     // -- Settings -----------------------------------------------------------------------------
 
     private fun loadPreferences() {
-        val prefs = Preferences.userRoot().node("de/tfr/tool/harddrivemanager")
-        val eq = prefs.getBoolean("equalCardHeights", false)
-        equalCardHeightsProp.set(eq)
-        val fixedEnabled = prefs.getBoolean("fixedCardHeightEnabled", false)
-        fixedCardHeightEnabledProp.set(fixedEnabled)
-        val fixedPx = prefs.getDouble("fixedCardHeightPx", 220.0)
-        fixedCardHeightPxProp.set(fixedPx)
-        val theme = Theme.fromString(prefs.get("theme", Theme.LIGHT.name))
+        equalCardHeightsProp.set(Settings.equalCardHeights)
+        fixedCardHeightEnabledProp.set(Settings.fixedCardHeightEnabled)
+        fixedCardHeightPxProp.set(Settings.fixedCardHeightPx)
+        val theme = Settings.theme
         themeProp.set(theme)
         ThemeManager.setTheme(theme)
-        val lang = Language.fromString(prefs.get("language", Language.DE.name))
+        val lang = Settings.language
         languageProp.set(lang)
         I18n.setLanguage(lang)
-        showHiddenProp.set(prefs.getBoolean("table.showHidden", false))
+        showHiddenProp.set(Settings.Table.showHidden)
         // Apply DB path if present
-        val dbPath = prefs.get("db.path", "").trim()
+        val dbPath = Settings.dbPath
         if (dbPath.isNotEmpty()) {
             try { Database.setDatabaseFile(Paths.get(dbPath)) } catch (_: Exception) {}
         }
@@ -276,14 +272,13 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     }
 
     private fun savePreferences() {
-        val prefs = Preferences.userRoot().node("de/tfr/tool/harddrivemanager")
-        prefs.putBoolean("equalCardHeights", equalCardHeightsProp.get())
-        prefs.putBoolean("fixedCardHeightEnabled", fixedCardHeightEnabledProp.get())
-        prefs.putDouble("fixedCardHeightPx", fixedCardHeightPxProp.get())
-        prefs.put("theme", themeProp.get().name)
-        prefs.put("language", I18n.currentLanguage.name)
-        prefs.put("db.path", try { Database.getCurrentDbPath().toString() } catch (e: Exception) { "" })
-        prefs.putBoolean("table.showHidden", showHiddenProp.get())
+        Settings.equalCardHeights = equalCardHeightsProp.get()
+        Settings.fixedCardHeightEnabled = fixedCardHeightEnabledProp.get()
+        Settings.fixedCardHeightPx = fixedCardHeightPxProp.get()
+        Settings.theme = themeProp.get()
+        Settings.language = I18n.currentLanguage
+        Settings.dbPath = Database.getCurrentDbPathAsString()
+        Settings.Table.showHidden = showHiddenProp.get()
     }
 
     private fun showSettingsDialog() {
@@ -300,23 +295,23 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         val result = SettingsDialog.show(current)
         if (!result.ok) return
 
-        val s = result.settings
+        val setting = result.settings
         // Apply settings
-        equalCardHeightsProp.set(s.equalCardHeights)
-        fixedCardHeightEnabledProp.set(s.fixedCardHeightEnabled)
-        fixedCardHeightPxProp.set(s.fixedCardHeightPx)
-        showHiddenProp.set(s.showHidden)
+        equalCardHeightsProp.set(setting.equalCardHeights)
+        fixedCardHeightEnabledProp.set(setting.fixedCardHeightEnabled)
+        fixedCardHeightPxProp.set(setting.fixedCardHeightPx)
+        showHiddenProp.set(setting.showHidden)
 
         // Theme & Language
-        themeProp.set(s.theme)
-        ThemeManager.setTheme(s.theme)
-        I18n.setLanguage(s.language)
+        themeProp.set(setting.theme)
+        ThemeManager.setTheme(setting.theme)
+        I18n.setLanguage(setting.language)
         applyTranslations()
 
         // Switch database path if needed
         if (result.dbPathChanged) {
             try {
-                val newPath = s.dbPath?.let { Paths.get(it) }
+                val newPath = setting.dbPath?.let { Paths.get(it) }
                 // Detect whether the target DB file existed before switching
                 val existedBefore = try { newPath?.let { java.nio.file.Files.exists(it) } ?: false } catch (_: Exception) { false }
                 Database.setDatabaseFile(newPath)
