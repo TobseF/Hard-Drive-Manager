@@ -27,13 +27,13 @@ class HardDriveManagerApp : Application() {
         if (!dbExistedBefore) {
             DiskRepository.seedIfEmpty()
         }
-
-        val root = MainView()
+        val root = MainView(primaryStage)
         val scene = Scene(root, 1280.0, 800.0)
         primaryStage.title = I18n.s("app.title")
         I18n.addListener { primaryStage.title = I18n.s("app.title") }
         primaryStage.scene = scene
         primaryStage.show()
+        root.applyTheme()
     }
 }
 

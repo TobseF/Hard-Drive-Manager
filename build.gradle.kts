@@ -21,6 +21,8 @@ dependencies {
     // Kotlin logging facade + simple SLF4J backend
     implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
     implementation("org.slf4j:slf4j-simple:2.0.16")
+    // Title bar theming
+    implementation("net.yetihafen:javafx-customcaption:1.0.1")
 
     testImplementation(kotlin("test"))
 }

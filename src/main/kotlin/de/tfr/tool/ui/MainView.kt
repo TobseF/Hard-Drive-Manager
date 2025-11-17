@@ -1,6 +1,5 @@
 package de.tfr.tool.ui
 
-import de.tfr.tool.de.tfr.tool.ui.SystemInfoDialog
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
@@ -16,11 +15,14 @@ import javafx.scene.layout.*
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.persist.Database
 import de.tfr.tool.ui.settings.AppSettings
+import de.tfr.tool.ui.settings.SettingsDialog
 import javafx.scene.control.Alert.AlertType
+import javafx.stage.Stage
+import net.yetihafen.javafx.customcaption.CustomCaption
 import java.util.prefs.Preferences
 import java.nio.file.Paths
 
-class MainView : BorderPane() {
+class MainView(private val primaryStage: Stage) : BorderPane() {
     private val disks = SimpleObjectProperty<MutableList<Disk>>(mutableListOf())
     private val equalCardHeightsProp = SimpleBooleanProperty(false)
     private val fixedCardHeightEnabledProp = SimpleBooleanProperty(false)
@@ -49,7 +51,7 @@ class MainView : BorderPane() {
         }
         center = buildTabs()
         // Apply theme initially (after UI was created)
-        applyTheme(themeProp.get())
+        applyTheme()
         // React to theme changes
         ThemeManager.addListener { t -> applyTheme(t) }
         // React to language changes
@@ -274,7 +276,7 @@ class MainView : BorderPane() {
             showHidden = showHiddenProp.get()
         )
 
-        val result = de.tfr.tool.ui.settings.SettingsDialog.show(current)
+        val result = SettingsDialog.show(current)
         if (!result.ok) return
 
         val s = result.settings
@@ -322,14 +324,16 @@ class MainView : BorderPane() {
     // Card height handling moved to CardsView
 
     // -- Theme ---------------------------------------------------------------------------------
-    private fun applyTheme(theme: Theme) {
+    fun applyTheme(theme: Theme = themeProp.get()) {
         // Toggle stylesheet
         val darkUrl = javaClass.getResource("/theme/dark.css")?.toExternalForm()
         val sheets = scene?.stylesheets
         if (darkUrl != null && sheets != null) {
             if (theme == Theme.DARK) {
+                CustomCaption.setImmersiveDarkMode(primaryStage, true)
                 if (!sheets.contains(darkUrl)) sheets.add(darkUrl)
             } else {
+                CustomCaption.setImmersiveDarkMode(primaryStage, false)
                 sheets.remove(darkUrl)
             }
         } else {
@@ -403,6 +407,6 @@ class MainView : BorderPane() {
      * Show a simple system information dialog that lists key environment details.
      */
     private fun showSystemInfoDialog() {
-        SystemInfoDialog().loadSystemInfo()
+        SystemInfoDialog().showAndWait()
     }
 }
