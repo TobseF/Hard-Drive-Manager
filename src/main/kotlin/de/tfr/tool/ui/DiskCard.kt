@@ -6,14 +6,14 @@ import de.tfr.tool.model.percentOf
 import de.tfr.tool.model.toTBString
 import javafx.geometry.Insets
 import javafx.geometry.Pos
+import javafx.scene.Node
 import javafx.scene.control.Label
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.scene.layout.*
 import javafx.scene.paint.Color
 import javafx.scene.shape.Circle
 import javafx.scene.shape.Rectangle
-import javafx.scene.Node
-import javafx.scene.image.Image
-import javafx.scene.image.ImageView
 
 class DiskCard(val disk: Disk) : StackPane() {
     private val outer = VBox(8.0)
@@ -22,7 +22,6 @@ class DiskCard(val disk: Disk) : StackPane() {
     // Header/footer references
     private lateinit var titleLabel: Label
     private lateinit var sizeLabelTop: Label
-    private lateinit var footerBig: Label
     private lateinit var footerModel: Label
     // Drive usage bar (overall disk usage at the very bottom)
     private lateinit var driveBarBg: Rectangle
@@ -59,10 +58,10 @@ class DiskCard(val disk: Disk) : StackPane() {
         headRow.alignment = Pos.CENTER_LEFT
 
         titleLabel = Label(disk.name)
-        titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold;"
+        titleLabel.style = "-fx-font-size: 18px; -fx-font-weight: bold;"
 
         sizeLabelTop = Label(disk.sizeTB.toTBString())
-        sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
+        sizeLabelTop.style = "-fx-font-size: 18px; -fx-text-fill: #444;"
         HBox.setHgrow(Region(), Priority.ALWAYS)
 
         val pin1 = Circle(4.0, Color.web("#7a7a7a"))
@@ -181,11 +180,9 @@ class DiskCard(val disk: Disk) : StackPane() {
         VBox.setVgrow(spacer, Priority.ALWAYS)
 
         val footer = VBox(2.0)
-        footerBig = Label("${disk.sizeTB.toTBString()} ${disk.type}")
-        footerBig.style = "-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4a4a4a;"
         footerModel = Label(disk.model)
         footerModel.style = "-fx-text-fill: #555;"
-        footer.children += listOf(footerBig, footerModel)
+        footer.children += listOf(footerModel)
 
         card.children += spacer
         card.children += footer
@@ -243,7 +240,6 @@ class DiskCard(val disk: Disk) : StackPane() {
             // Header/texts
             titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #e6e6e6;"
             sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #c8c8c8;"
-            footerBig.style = "-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #f0f0f0;"
             footerModel.style = "-fx-text-fill: #c0c0c0;"
             // Partitions
             parts.forEach {
@@ -267,7 +263,6 @@ class DiskCard(val disk: Disk) : StackPane() {
             card.border = Border(BorderStroke(Color.web("#a5a5a5"), BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)))
             titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #000000;"
             sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
-            footerBig.style = "-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4a4a4a;"
             footerModel.style = "-fx-text-fill: #555;"
             parts.forEach {
                 it.partBox.background = Background(BackgroundFill(Color.rgb(255, 250, 229), CornerRadii(6.0), Insets.EMPTY))
