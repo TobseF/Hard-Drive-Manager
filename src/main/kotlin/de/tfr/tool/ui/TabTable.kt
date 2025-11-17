@@ -772,7 +772,7 @@ class TabTable(
         val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
         alert.buttonTypes.setAll(confirmButtonType, cancelButtonType)
 
-        val res = DialogHelper.showAlert(alert, ThemeManager.currentTheme == Theme.DARK)
+        val res = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
         if (res.isPresent && res.get() == confirmButtonType) {
             when (v) {
                 is Disk -> DiskRepository.deleteDisk(v.id)

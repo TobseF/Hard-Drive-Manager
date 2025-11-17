@@ -121,7 +121,7 @@ object SettingsDialog {
                 alert.buttonTypes.setAll(confirmButtonType, cancelClearButtonType)
 
                 // Adapt dialog styling to the current theme
-                val resClear = DialogHelper.showAlert(alert, ThemeManager.currentTheme == Theme.DARK)
+                val resClear = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
                 if (resClear.isPresent && resClear.get() == confirmButtonType) {
                     // Log user-confirmed database clear action
                     val dbPathStr = try { Database.getCurrentDbPath().toString() } catch (_: Exception) { "<unknown>" }
@@ -132,14 +132,14 @@ object SettingsDialog {
                         // Mark that DB has been cleared so caller can react after OK
                         dbClearedFlag = true
                         // Note: We cannot reload UI from here; caller should update UI if needed
-                        DialogHelper.showAlert(
+                        DialogHelper.showDialog(
                             Alert(Alert.AlertType.INFORMATION, I18n.s("alert.db.clear.success", disksDeleted, partsDeleted)),
                             ThemeManager.currentTheme == Theme.DARK
                         )
                         // Path remains unchanged; do not auto-seed here
                     } catch (ex: Exception) {
                         logger.error(ex) { "Error while clearing database" }
-                        DialogHelper.showAlert(
+                        DialogHelper.showDialog(
                             Alert(Alert.AlertType.ERROR, I18n.s("alert.db.clear.error", ex.message ?: "")),
                             ThemeManager.currentTheme == Theme.DARK
                         )

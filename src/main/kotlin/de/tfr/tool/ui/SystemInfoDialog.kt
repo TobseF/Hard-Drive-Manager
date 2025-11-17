@@ -70,7 +70,7 @@ class SystemInfoDialog : Dialog<ButtonType>(){
                 val content = ClipboardContent()
                 content.putString(text)
                 clipboard.setContent(content)
-                DialogHelper.showAlert(
+                DialogHelper.showDialog(
                     Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied")),
                     ThemeManager.currentTheme == Theme.DARK
                 )

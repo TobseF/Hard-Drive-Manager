@@ -20,7 +20,7 @@ import javax.imageio.ImageIO
 object PngExporter {
     fun exportCardsAsPng(node: Node, owner: Window?) {
         if (node.boundsInParent.width <= 0.0 || node.boundsInParent.height <= 0.0) {
-            DialogHelper.showAlert(
+            DialogHelper.showDialog(
                 Alert(Alert.AlertType.INFORMATION, I18n.s("alert.info.noCards")),
                 ThemeManager.currentTheme == Theme.DARK
             )
@@ -38,12 +38,12 @@ object PngExporter {
             val image = node.snapshot(params, null as WritableImage?)
             val buffered = SwingFXUtils.fromFXImage(image, null)
             ImageIO.write(buffered, "png", file)
-            DialogHelper.showAlert(
+            DialogHelper.showDialog(
                 Alert(Alert.AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)),
                 ThemeManager.currentTheme == Theme.DARK
             )
         } catch (ex: Exception) {
-            DialogHelper.showAlert(
+            DialogHelper.showDialog(
                 Alert(Alert.AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
                 ThemeManager.currentTheme == Theme.DARK
             )

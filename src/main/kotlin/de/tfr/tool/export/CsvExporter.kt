@@ -97,12 +97,12 @@ object CsvExporter {
         val file: File = chooser.showSaveDialog(owner) ?: return
         try {
             file.writeText(lines.joinToString(System.lineSeparator()), Charsets.UTF_8)
-            DialogHelper.showAlert(
+            DialogHelper.showDialog(
                 Alert(AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)),
                 ThemeManager.currentTheme == Theme.DARK
             )
         } catch (ex: Exception) {
-            DialogHelper.showAlert(
+            DialogHelper.showDialog(
                 Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
                 ThemeManager.currentTheme == Theme.DARK
             )

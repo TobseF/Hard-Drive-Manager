@@ -326,12 +326,12 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
                     DiskRepository.seedIfEmpty()
                 }
                 reloadFromDb()
-                DialogHelper.showAlert(
+                DialogHelper.showDialog(
                     Alert(AlertType.INFORMATION, I18n.s("alert.db.switched", Database.getCurrentDbPath().toString())),
                     ThemeManager.currentTheme == Theme.DARK
                 )
             } catch (ex: Exception) {
-                DialogHelper.showAlert(
+                DialogHelper.showDialog(
                     Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
                     ThemeManager.currentTheme == Theme.DARK
                 )
@@ -394,7 +394,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     private fun exportCardsAsPng() {
         // Determine the content node of the cards view (first child, not the scroll viewport)
         val contentNode = tabCards.getSnapshotContent() ?: run {
-            DialogHelper.showAlert(
+            DialogHelper.showDialog(
                 Alert(AlertType.INFORMATION, I18n.s("alert.info.noCards")),
                 ThemeManager.currentTheme == Theme.DARK
             )
