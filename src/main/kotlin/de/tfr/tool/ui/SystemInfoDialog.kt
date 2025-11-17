@@ -18,14 +18,26 @@ import java.util.function.Function
  * action to copy the full list as plain text to the clipboard.
  */
 class SystemInfoDialog : Dialog<ButtonType>(){
+    private lateinit var copyButtonType: ButtonType
+    private lateinit var closeButtonType: ButtonType
+    private lateinit var grid: GridPane
+    private lateinit var systemInfo: SystemInfo
+    private lateinit var keyLabels: List<Label>
+
     init {
+        systemInfo = loadSystemInfo()
+        updateContent()
+
+        // Listen to language changes and update the dialog content
+        I18n.addListener { updateContent() }
+    }
+
+    private fun updateContent() {
         title = I18n.s("dialog.sysinfo.title")
         headerText = null
 
-        val systemInfo = loadSystemInfo()
-
         // Build a compact two-column grid with labels on the left and values on the right
-        val grid = GridPane().apply {
+        grid = GridPane().apply {
             hgap = 12.0
             vgap = 8.0
             padding = Insets(10.0, 10.0, 0.0, 10.0)
@@ -37,33 +49,42 @@ class SystemInfoDialog : Dialog<ButtonType>(){
             I18n.s("sysinfo.javafx") to systemInfo.javafxVersion
         )
 
+        keyLabels = mutableListOf()
         rows.forEachIndexed { index, (k, v) ->
-            grid.add(Label(k).apply { style = "-fx-font-weight: bold;" }, 0, index)
+            val keyLabel = Label(k).apply { style = "-fx-font-weight: bold;" }
+            keyLabels += keyLabel
+            grid.add(keyLabel, 0, index)
             grid.add(Label(v), 1, index)
         }
 
-        val copyButtonType = ButtonType(I18n.s("dialog.sysinfo.copy"), ButtonBar.ButtonData.LEFT)
-        // Use explicit CLOSE button to underline close semantics
-        val closeButtonType = ButtonType.CLOSE
-        dialogPane.buttonTypes.setAll(copyButtonType, closeButtonType)
-        dialogPane.content = grid
+        // Check if buttons already exist, otherwise create them
+        if (!::copyButtonType.isInitialized) {
+            copyButtonType = ButtonType(I18n.s("dialog.sysinfo.copy"), ButtonBar.ButtonData.LEFT)
+            closeButtonType = ButtonType(I18n.s("btn.close"), ButtonBar.ButtonData.CANCEL_CLOSE)
+            dialogPane.buttonTypes.setAll(copyButtonType, closeButtonType)
 
-        // Copy handler: join as lines "Key: Value" to clipboard
-        (dialogPane.lookupButton(copyButtonType) as? Button)?.setOnAction {
-            val text = rows.joinToString("\n") { (k, v) -> "$k: $v" }
-            val clipboard = Clipboard.getSystemClipboard()
-            val content = ClipboardContent()
-            content.putString(text)
-            clipboard.setContent(content)
-            DialogHelper.showAlert(
-                Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied")),
-                ThemeManager.currentTheme == Theme.DARK
-            )
+            // Copy handler: join as lines "Key: Value" to clipboard
+            (dialogPane.lookupButton(copyButtonType) as? Button)?.setOnAction {
+                val text = rows.joinToString("\n") { (k, v) -> "$k: $v" }
+                val clipboard = Clipboard.getSystemClipboard()
+                val content = ClipboardContent()
+                content.putString(text)
+                clipboard.setContent(content)
+                DialogHelper.showAlert(
+                    Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied")),
+                    ThemeManager.currentTheme == Theme.DARK
+                )
+            }
+
+            // Ensure that closing via window 'X' works even without selecting a button
+            setResultConverter { dialogButton: ButtonType? -> dialogButton }
+        } else {
+            // Update button texts
+            (dialogPane.lookupButton(copyButtonType) as? Button)?.text = I18n.s("dialog.sysinfo.copy")
+            (dialogPane.lookupButton(closeButtonType) as? Button)?.text = I18n.s("btn.close")
         }
 
-        // Ensure that closing via window 'X' works even without selecting a button
-        // (showAndWait will just return Optional.empty in that case)
-        setResultConverter { dialogButton: ButtonType? -> dialogButton }
+        dialogPane.content = grid
     }
 
     /**

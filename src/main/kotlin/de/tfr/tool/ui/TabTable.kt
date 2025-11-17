@@ -766,8 +766,14 @@ class TabTable(
         alert.title = I18n.s("alert.delete.title")
         alert.headerText = null
         alert.contentText = what
+
+        // Replace default buttons with translated ones
+        val confirmButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
+        val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
+        alert.buttonTypes.setAll(confirmButtonType, cancelButtonType)
+
         val res = DialogHelper.showAlert(alert, ThemeManager.currentTheme == Theme.DARK)
-        if (res.isPresent && res.get() == ButtonType.OK) {
+        if (res.isPresent && res.get() == confirmButtonType) {
             when (v) {
                 is Disk -> DiskRepository.deleteDisk(v.id)
                 is Partition -> DiskRepository.deletePartition(v.id)

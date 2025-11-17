@@ -37,7 +37,11 @@ object SettingsDialog {
         val dlg = Dialog<ButtonType>()
         dlg.title = I18n.s("settings.title")
         dlg.headerText = null
-        dlg.dialogPane.buttonTypes.setAll(ButtonType.OK, ButtonType.CANCEL)
+
+        // Create custom button types with translated texts
+        val okButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
+        val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
+        dlg.dialogPane.buttonTypes.setAll(okButtonType, cancelButtonType)
 
         val content = VBox(12.0).apply { padding = Insets(10.0) }
 
@@ -110,9 +114,15 @@ object SettingsDialog {
                 alert.title = I18n.s("alert.db.clear.confirm.title")
                 alert.headerText = null
                 alert.contentText = I18n.s("alert.db.clear.confirm.text")
+
+                // Replace default buttons with translated ones
+                val confirmButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
+                val cancelClearButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
+                alert.buttonTypes.setAll(confirmButtonType, cancelClearButtonType)
+
                 // Adapt dialog styling to the current theme
                 val resClear = DialogHelper.showAlert(alert, ThemeManager.currentTheme == Theme.DARK)
-                if (resClear.isPresent && resClear.get() == ButtonType.OK) {
+                if (resClear.isPresent && resClear.get() == confirmButtonType) {
                     // Log user-confirmed database clear action
                     val dbPathStr = try { Database.getCurrentDbPath().toString() } catch (_: Exception) { "<unknown>" }
                     logger.info { "User confirmed clearing database at path: $dbPathStr" }
@@ -187,10 +197,14 @@ object SettingsDialog {
             (dbRow.children[2] as Button).text = I18n.s("settings.db.browse")
             (dbRow.children[3] as Button).text = I18n.s("settings.db.clear")
             cbShowHidden.text = I18n.s("btn.showHidden")
+
+            // Update button texts
+            (dlg.dialogPane.lookupButton(okButtonType) as? Button)?.text = I18n.s("btn.ok")
+            (dlg.dialogPane.lookupButton(cancelButtonType) as? Button)?.text = I18n.s("btn.cancel")
         }
 
         val res = DialogHelper.showDialog(dlg, current.theme == Theme.DARK)
-        if (!res.isPresent || res.get() != ButtonType.OK) {
+        if (!res.isPresent || res.get() != okButtonType) {
             // Restore original theme and language if user cancelled
             ThemeManager.setTheme(current.theme)
             I18n.setLanguage(current.language)
