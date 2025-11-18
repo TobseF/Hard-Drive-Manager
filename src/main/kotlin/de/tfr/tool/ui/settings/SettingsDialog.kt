@@ -1,5 +1,6 @@
 package de.tfr.tool.ui.settings
 
+import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
 import de.tfr.tool.persist.Database
 import de.tfr.tool.ui.*
 import javafx.geometry.Insets
@@ -171,7 +172,7 @@ object SettingsDialog {
             javafx.application.Platform.runLater {
                 val window = dlg.dialogPane.scene?.window
                 if (window is Stage) {
-                    CustomCaption.setImmersiveDarkMode(window, previewTheme == Theme.DARK)
+                    ThemeHelper.setDarkTitleBar(window, previewTheme)
                 }
             }
         }

@@ -1,6 +1,7 @@
 package de.tfr.tool.ui
 
 import de.tfr.tool.de.tfr.tool.persist.Settings
+import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
@@ -350,7 +351,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     fun applyTheme(theme: Theme = themeProp.get()) {
         // AtlantaFX manages the theme globally via Application.setUserAgentStylesheet
         // We just need to apply window-specific settings
-        CustomCaption.setImmersiveDarkMode(primaryStage, theme == Theme.DARK)
+        ThemeHelper.setDarkTitleBar(primaryStage, theme)
 
         // Update CardsView and PartitionsView
         tabCards.applyTheme(theme)

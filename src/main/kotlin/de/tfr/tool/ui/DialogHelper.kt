@@ -1,5 +1,6 @@
 package de.tfr.tool.ui
 
+import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
 import javafx.application.Platform
 import javafx.scene.control.Dialog
 import javafx.stage.Stage
@@ -21,7 +22,7 @@ object DialogHelper {
         Platform.runLater {
             val window = dialog.dialogPane.scene?.window
             if (window is Stage) {
-                CustomCaption.setImmersiveDarkMode(window, isDark)
+                ThemeHelper.setDarkTitleBar(window, isDark)
             }
         }
 
