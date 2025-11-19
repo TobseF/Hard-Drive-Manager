@@ -4,9 +4,12 @@ import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.control.Alert.AlertType
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
 import javafx.scene.layout.GridPane
+import javafx.stage.Stage
 import java.lang.module.ModuleDescriptor
 import java.util.*
 import java.util.function.Function
@@ -21,11 +24,9 @@ class SystemInfoDialog : Dialog<ButtonType>(){
     private lateinit var copyButtonType: ButtonType
     private lateinit var closeButtonType: ButtonType
     private lateinit var grid: GridPane
-    private lateinit var systemInfo: SystemInfo
-    private lateinit var keyLabels: List<Label>
+    private val systemInfo: SystemInfo = loadSystemInfo()
 
     init {
-        systemInfo = loadSystemInfo()
         updateContent()
 
         // Listen to language changes and update the dialog content
@@ -43,19 +44,32 @@ class SystemInfoDialog : Dialog<ButtonType>(){
             padding = Insets(10.0, 10.0, 0.0, 10.0)
         }
 
+        val appVersion = System.getProperty("app.version") ?: ""
+        val appTitle = I18n.s("app.title")
+
         val rows = listOf(
+            I18n.s("app.version") to appVersion,
             I18n.s("sysinfo.os") to "${systemInfo.osName} ${systemInfo.osVersion} (${systemInfo.osArch})",
             I18n.s("sysinfo.java") to systemInfo.javaVersion,
             I18n.s("sysinfo.javafx") to systemInfo.javafxVersion
         )
 
-        keyLabels = mutableListOf()
-        rows.forEachIndexed { index, (k, v) ->
-            val keyLabel = Label(k).apply { style = "-fx-font-weight: bold;" }
-            keyLabels += keyLabel
-            grid.add(keyLabel, 0, index)
-            grid.add(Label(v), 1, index)
+        // Icon + App-Name in erster Zeile nebeneinander
+        val iconStream = javaClass.getResourceAsStream("/icon.png")
+        val titleLabel = Label(appTitle).apply { style = "-fx-font-size: 16px; -fx-font-weight: bold;" }
+        if (iconStream != null) {
+            val imageView = ImageView(Image(iconStream)).apply {
+                fitWidth = 64.0
+                fitHeight = 64.0
+                isPreserveRatio = true
+            }
+            grid.add(imageView, 0, 0)
+            grid.add(titleLabel, 1, 0)
+        } else {
+            // Fallback: nur Titel falls Icon fehlt
+            grid.add(titleLabel, 0, 0, 2, 1)
         }
+
 
         // Check if buttons already exist, otherwise create them
         if (!::copyButtonType.isInitialized) {
@@ -84,6 +98,12 @@ class SystemInfoDialog : Dialog<ButtonType>(){
             (dialogPane.lookupButton(closeButtonType) as? Button)?.text = I18n.s("btn.close")
         }
 
+        rows.forEachIndexed { index, (k, v) ->
+            val keyLabel = Label(k).apply { style = "-fx-font-weight: bold;" }
+            grid.add(keyLabel, 0, 1 + index)
+            grid.add(Label(v), 1, 1 + index)
+        }
+
         dialogPane.content = grid
     }
 
@@ -91,6 +111,18 @@ class SystemInfoDialog : Dialog<ButtonType>(){
      * Shows the dialog with correct dark mode title bar.
      */
     fun showDialog(): Optional<ButtonType> {
+        // Set icon for dialog window
+        dialogPane.scene?.window?.let { window ->
+            if (window is Stage) {
+                try {
+                    val iconStream = javaClass.getResourceAsStream("/info.png")
+                    if (iconStream != null) {
+                        window.icons.add(Image(iconStream))
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        }
         return DialogHelper.showDialog(this, ThemeManager.currentTheme == Theme.DARK)
     }
 
@@ -104,7 +136,7 @@ class SystemInfoDialog : Dialog<ButtonType>(){
         val javafxVersion = Platform::class.java.module
             .descriptor
             .version()
-            .map(Function { obj: ModuleDescriptor.Version? -> obj.toString() }) // Konvertiert java.lang.module.ModuleDescriptor.Version zu String
+            .map(Function { obj: ModuleDescriptor.Version? -> obj.toString() })
             .orElse("")
         return SystemInfo(osName, osVersion, osArch, javaVersion, javafxVersion)
     }

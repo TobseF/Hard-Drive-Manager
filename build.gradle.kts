@@ -44,6 +44,7 @@ application {
     applicationDefaultJvmArgs = listOf(
         "--enable-native-access=javafx.graphics",
         "--enable-native-access=ALL-UNNAMED",
+        "-Dapp.version=$version" // Added system property for app version
     )
 }
 
