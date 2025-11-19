@@ -1,7 +1,7 @@
 package de.tfr.tool.model
 
-import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.SimpleBooleanProperty
+import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.SimpleLongProperty
 import javafx.beans.property.SimpleStringProperty
 
@@ -36,6 +36,10 @@ data class Partition(
     var uuid: String get() = uuidProp.get(); set(v) = uuidProp.set(v)
     var fsType: String get() = fsTypeProp.get(); set(v) = fsTypeProp.set(v)
     var hidden: Boolean get() = hiddenProp.get(); set(v) = hiddenProp.set(v)
+
+    override fun toString(): String {
+        return "Partition($letter:$name ${sizeTB.toTBString()} ($uuid))"
+    }
 }
 
 data class Disk(
@@ -60,6 +64,10 @@ data class Disk(
     var tag: String get() = tagProp.get(); set(v) = tagProp.set(v)
     var hidden: Boolean get() = hiddenProp.get(); set(v) = hiddenProp.set(v)
     val usedTB: Double get() = partitions.sumOf { it.usedTB }
+
+    override fun toString(): String {
+        return "Partition($manufacturer $name ${sizeTB.toTBString()} ($serial))"
+    }
 }
 
 object SampleDataRepository {

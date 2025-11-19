@@ -3,6 +3,7 @@ package de.tfr.tool.persist
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import oshi.SystemInfo
+import oshi.hardware.HWDiskStore
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
@@ -15,6 +16,11 @@ import kotlin.math.abs
  *  - Partitions: primarily by UUID; fallback: drive letter/mount point.
  *
  * Empty fields are filled; sizes/used values are updated.
+ *
+ * Implementation detail: We first discover all partitions (including file stores that may not
+ * be reported as disk partitions – e.g. encrypted containers or virtual volumes) and afterwards
+ * associate/create disks for them. This prevents partitions from being lost when their underlying
+ * disk is not exposed by OSHI or cannot be matched.
  */
 object OshiImporter {
     data class Result(
@@ -29,135 +35,237 @@ object OshiImporter {
         val hardwareAbstractionLayer = systemInfo.hardware
         val os = systemInfo.operatingSystem
 
-        val existing = DiskRepository.loadAll()
-        val diskBySerial = existing.associateBy { it.serial.trim().lowercase() }.toMutableMap()
-        val disksByModelSize = existing.associateBy { (it.model.trim().lowercase()) + "|" + it.sizeTB.toString() }.toMutableMap()
+        // Load existing disks and build lookup maps
+        val existingDisks = DiskRepository.loadAll()
+        val diskBySerial = existingDisks.associateBy { it.serial.trim().lowercase() }.toMutableMap()
+        val disksByModelSize =
+            existingDisks.associateBy { (it.model.trim().lowercase()) + "|" + it.sizeTB.toString() }.toMutableMap()
 
-        // Map Partitionen nach UUID und Laufwerksbuchstabe
-        val partByUuid = existing.flatMap { it.partitions }.associateBy { it.uuid.trim().lowercase() }.toMutableMap()
-        val partByLetter = existing.flatMap { it.partitions }.associateBy { it.letter.trim().lowercase() }.toMutableMap()
+        // Existing partitions lookup maps (UUID + drive letter)
+        val partitionByUuid: MutableMap<String, Partition> =
+            existingDisks.flatMap { it.partitions }.associateBy { it.uuid.trim().lowercase() }.toMutableMap()
+        val partitionByLetter: MutableMap<String, Partition> =
+            existingDisks.flatMap { it.partitions }.associateBy { it.letter.trim().lowercase() }.toMutableMap()
 
         val disksUpdated = AtomicInteger(0)
         val disksInserted = AtomicInteger(0)
         val partitionsUpdated = AtomicInteger(0)
         val partitionsInserted = AtomicInteger(0)
 
-        // Dateien-/Volume-Infos (für Partitionen)
-        val fileSystem = os.fileSystem
-        val stores = fileSystem.fileStores
-        // Map nach UUID und Mount
-        val storeByUuid = stores.associateBy { (it.uuid ?: "").trim().lowercase() }
-        val storeByMount = stores.associateBy { (it.mount ?: it.name ?: "").trim().lowercase() }
+        // File system stores (volumes) - may include encrypted containers or virtual volumes
+        val fileStores = os.fileSystem.fileStores
 
+        // Disk stores from hardware layer
+        val hwDiskStores = hardwareAbstractionLayer.diskStores
 
-        // Disks auslesen
-        val oshiDisks = hardwareAbstractionLayer.diskStores
-        oshiDisks.forEach { diskStore ->
-            val serial = (diskStore.serial ?: "").trim()
-            val modelSystemInfo = (diskStore.model ?: "").trim()
-            val manufacturer = guessManufacturer(modelSystemInfo)
-            val model = parseModel(modelSystemInfo, manufacturer)
-            val sizeTB = bytesToTB(diskStore.size)
-            val type = guessType(model)
-            val keySerial = serial.lowercase()
-            var disk: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
-            if (disk == null) {
-                disk = disksByModelSize[model.lowercase() + "|" + sizeTB.toString()]
-            }
+        // Candidate structure for partition-first processing
+        data class PartitionCandidate(
+            val uuid: String,
+            val mountRaw: String,
+            val sizeBytes: Long,
+            val diskStore: HWDiskStore?,
+            var usedTB: Double = 0.0,
+            var label: String = "",
+            var mountPoint: String = "",
+            var fsType: String = ""
+        )
 
-            val generatedDriveName = "$manufacturer $type"
-            if (disk == null) {
-                // create new
-                val newDisk = Disk().apply {
-                    name = generatedDriveName
-                    this.model = model
-                    this.manufacturer = manufacturer
-                    this.serial = serial
-                    this.type = type
-                    this.sizeTB = sizeTB
-                    this.tag = ""
-                }
-                val newId = DiskRepository.insertDisk(newDisk)
-                newDisk.id = newId
-                existing += newDisk
-                if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
-                disksByModelSize[model.lowercase() + "|" + sizeTB.toString()] = newDisk
-                disk = newDisk
-                disksInserted.incrementAndGet()
-            } else {
-                // complement/update
-                var changed = false
-                if (disk.sizeTB != sizeTB && sizeTB > 0) { disk.sizeTB = sizeTB; changed = true }
-                if (disk.model.isBlank() && model.isNotEmpty()) { disk.model = model; changed = true }
-                if (disk.manufacturer.isBlank() && manufacturer.isNotEmpty()) { disk.manufacturer = manufacturer; changed = true }
-                if (disk.serial.isBlank() && serial.isNotEmpty()) { disk.serial = serial; changed = true }
-                if (disk.type.isBlank() && type.isNotEmpty()) { disk.type = type; changed = true }
-                if (disk.name.isBlank()) { disk.name = generatedDriveName; changed = true }
-                if (changed) { DiskRepository.updateDisk(disk); disksUpdated.incrementAndGet() }
-            }
+        val partitionCandidates = mutableListOf<PartitionCandidate>()
 
-            // Map partitions
+        // 1. Collect partitions from disk stores (hardware reported partitions)
+        hwDiskStores.forEach { diskStore ->
             diskStore.partitions.forEach { part ->
                 val uuid = (part.uuid ?: "").trim()
                 val mount = (part.mountPoint ?: part.identification ?: "").trim()
-                val pSizeTB = bytesToTB(part.size)
-                // used TB via FileStore (if mount/uuid matches)
-                var usedTB = 0.0
-                val store = when {
-                    uuid.isNotEmpty() && storeByUuid.containsKey(uuid.lowercase()) -> storeByUuid[uuid.lowercase()]
-                    mount.isNotEmpty() && storeByMount.containsKey(mount.lowercase()) -> storeByMount[mount.lowercase()]
-                    else -> null
+                val sizeBytes = part.size
+                partitionCandidates += PartitionCandidate(uuid, mount, sizeBytes, diskStore)
+            }
+        }
+
+        // Helper maps for quick candidate enrichment
+        fun findCandidate(uuid: String, mount: String): PartitionCandidate? {
+            val u = uuid.trim().lowercase()
+            val m = mount.trim().lowercase()
+            return partitionCandidates.firstOrNull {
+                (it.uuid.trim().lowercase().takeIf { it.isNotEmpty() } == u && u.isNotEmpty()) ||
+                        (it.mountRaw.trim().lowercase().takeIf { it.isNotEmpty() } == m && m.isNotEmpty())
+            }
+        }
+
+        // 2. Enrich with file store information or add missing volumes as standalone partitions
+        fileStores.forEach { store ->
+            val sUuid = (store.uuid ?: "").trim()
+            val sMount = (store.mount ?: store.name ?: "").trim()
+            val candidate = findCandidate(sUuid, sMount)
+            val usedTB = bytesToTB(store.totalSpace - store.usableSpace)
+            if (candidate != null) {
+                candidate.usedTB = usedTB
+                candidate.label = store.label ?: ""
+                candidate.mountPoint = sMount
+                candidate.fsType = store.type ?: ""
+            } else {
+                // Missing in disk partitions -> add new candidate without associated disk (will go to Unknown Disk)
+                partitionCandidates += PartitionCandidate(
+                    uuid = sUuid,
+                    mountRaw = sMount,
+                    sizeBytes = store.totalSpace, // approximate size
+                    diskStore = null,
+                    usedTB = usedTB,
+                    label = store.label ?: "",
+                    mountPoint = sMount,
+                    fsType = store.type ?: ""
+                )
+            }
+        }
+
+        // Unknown disk placeholder (lazy create) for partitions without backing disk info
+        var unknownDisk: Disk? = null
+        fun ensureUnknownDisk(): Disk {
+            if (unknownDisk != null) return unknownDisk!!
+            // Try to reuse existing disk with name "Unknown Disk" if present
+            unknownDisk = existingDisks.firstOrNull { it.name == "Unknown Disk" }
+            if (unknownDisk == null) {
+                val d = Disk().apply {
+                    name = "Unknown Disk"
+                    type = ""
+                    model = ""
+                    manufacturer = ""
+                    serial = ""
+                    sizeTB = 0.0
+                    tag = ""
                 }
-                var label = ""
-                var mountPoint = ""
-                if (store != null) {
-                    usedTB = bytesToTB(store.totalSpace - store.usableSpace)
-                    label = store.label
-                    mountPoint = store.mount
+                val newId = DiskRepository.insertDisk(d)
+                d.id = newId
+                existingDisks += d
+                disksByModelSize[d.model.lowercase() + "|" + d.sizeTB.toString()] = d
+                unknownDisk = d
+                disksInserted.incrementAndGet()
+            }
+            return unknownDisk!!
+        }
+
+        // 3. For each partition candidate resolve/create its disk, then merge partition
+        partitionCandidates.forEach { cand ->
+            // Resolve disk
+            val disk: Disk = if (cand.diskStore != null) {
+                val diskStore = cand.diskStore
+                val serial = (diskStore.serial ?: "").trim()
+                val modelSystemInfo = (diskStore.model ?: "").trim()
+                val manufacturer = guessManufacturer(modelSystemInfo)
+                val model = parseModel(modelSystemInfo, manufacturer)
+                val sizeTB = bytesToTB(diskStore.size)
+                val type = guessType(model)
+                val keySerial = serial.lowercase()
+                var d: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
+                if (d == null) {
+                    d = disksByModelSize[model.lowercase() + "|" + sizeTB.toString()]
                 }
-                val driveLetter = extractWindowsLetter(mountPoint)
-
-
-                val keyUuid = uuid.lowercase()
-                var partitionFromDB: Partition? = if (keyUuid.isNotEmpty()) partByUuid[keyUuid] else null
-                if (partitionFromDB == null && driveLetter.isNotEmpty()) {
-                    if (driveLetter.isNotEmpty()) partitionFromDB = partByLetter[driveLetter.lowercase()]
-                }
-
-
-                if (partitionFromDB == null) {
-                    val outerUsed = usedTB
-                    val outerUuid = uuid
-                    val fsTypeStr = store?.type ?: ""
-                    val newPartition = Partition().apply {
-                        this.diskId = disk.id
-                        this.name = label
-                        this.letter = driveLetter
-                        this.type = "Partition"
-                        this.sizeTB = pSizeTB
-                        this.usedTB = outerUsed
-                        this.uuid = outerUuid
-                        this.fsType = fsTypeStr
-                        this.tags = ""
+                val generatedDriveName = listOf(manufacturer, type).filter { it.isNotBlank() }.joinToString(" ")
+                    .ifBlank { model.ifBlank { serial }.ifBlank { "Disk" } }
+                if (d == null) {
+                    val newDisk = Disk().apply {
+                        name = generatedDriveName
+                        this.model = model
+                        this.manufacturer = manufacturer
+                        this.serial = serial
+                        this.type = type
+                        this.sizeTB = sizeTB
+                        this.tag = ""
                     }
-                    val pid = DiskRepository.insertPartition(newPartition)
-                    newPartition.id = pid
-                    disk.partitions += newPartition
-                    if (outerUuid.isNotEmpty()) partByUuid[outerUuid.lowercase()] = newPartition
-                    if (newPartition.letter.isNotBlank()) partByLetter[newPartition.letter.lowercase()] = newPartition
-                    partitionsInserted.incrementAndGet()
+                    val newId = DiskRepository.insertDisk(newDisk)
+                    newDisk.id = newId
+                    existingDisks += newDisk
+                    if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
+                    disksByModelSize[model.lowercase() + "|" + sizeTB.toString()] = newDisk
+                    disksInserted.incrementAndGet()
+                    newDisk
                 } else {
                     var changed = false
-                    if (partitionFromDB.diskId != disk.id) { partitionFromDB.diskId = disk.id; changed = true }
-                    if (partitionFromDB.name != label) { partitionFromDB.name = label; changed = true }
-                    if (partitionFromDB.sizeTB != pSizeTB && pSizeTB > 0) { partitionFromDB.sizeTB = pSizeTB; changed = true }
-                    if (usedTB >= 0.0 && abs(partitionFromDB.usedTB - usedTB) > 0.0001) { partitionFromDB.usedTB = usedTB; changed = true }
-                    if (partitionFromDB.uuid.isBlank() && uuid.isNotEmpty()) { partitionFromDB.uuid = uuid; changed = true }
-                    val letter = extractWindowsLetter(mount)
-                    if (partitionFromDB.letter.isBlank() && letter.isNotEmpty()) { partitionFromDB.letter = letter; changed = true }
-                    val fsType = store?.type ?: ""
-                    if (partitionFromDB.fsType.isBlank() && fsType.isNotEmpty()) { partitionFromDB.fsType = fsType; changed = true }
-                    if (changed) { DiskRepository.updatePartition(partitionFromDB); partitionsUpdated.incrementAndGet() }
+                    if (d.sizeTB != sizeTB && sizeTB > 0) {
+                        d.sizeTB = sizeTB; changed = true
+                    }
+                    if (d.model.isBlank() && model.isNotEmpty()) {
+                        d.model = model; changed = true
+                    }
+                    if (d.manufacturer.isBlank() && manufacturer.isNotEmpty()) {
+                        d.manufacturer = manufacturer; changed = true
+                    }
+                    if (d.serial.isBlank() && serial.isNotEmpty()) {
+                        d.serial = serial; changed = true
+                    }
+                    if (d.type.isBlank() && type.isNotEmpty()) {
+                        d.type = type; changed = true
+                    }
+                    if (d.name.isBlank()) {
+                        d.name = generatedDriveName; changed = true
+                    }
+                    if (changed) {
+                        DiskRepository.updateDisk(d); disksUpdated.incrementAndGet()
+                    }
+                    d
+                }
+            } else {
+                // No disk info -> use Unknown Disk placeholder
+                ensureUnknownDisk()
+            }
+
+            // Partition merge/create
+            val uuidKey = cand.uuid.trim().lowercase()
+            val mountPoint = cand.mountPoint.ifBlank { cand.mountRaw }
+            val letter = extractWindowsLetter(mountPoint)
+            var partitionFromDB: Partition? = if (uuidKey.isNotEmpty()) partitionByUuid[uuidKey] else null
+            if (partitionFromDB == null && letter.isNotEmpty()) {
+                partitionFromDB = partitionByLetter[letter.lowercase()]
+            }
+
+            val sizeTB = bytesToTB(cand.sizeBytes)
+            val usedTB = cand.usedTB
+            val fsType = cand.fsType
+            val label = cand.label
+
+            if (partitionFromDB == null) {
+                val newPartition = Partition().apply {
+                    this.diskId = disk.id
+                    this.name = label.ifBlank { if (letter.isNotEmpty()) "$letter" else "Unknown" }
+                    this.letter = letter
+                    this.type = "Partition"
+                    this.sizeTB = sizeTB
+                    this.usedTB = usedTB
+                    this.uuid = cand.uuid
+                    this.fsType = fsType
+                    this.tags = ""
+                }
+                val pid = DiskRepository.insertPartition(newPartition)
+                newPartition.id = pid
+                disk.partitions += newPartition
+                if (cand.uuid.isNotBlank()) partitionByUuid[cand.uuid.lowercase()] = newPartition
+                if (newPartition.letter.isNotBlank()) partitionByLetter[newPartition.letter.lowercase()] = newPartition
+                partitionsInserted.incrementAndGet()
+            } else {
+                var changed = false
+                if (partitionFromDB.diskId != disk.id) {
+                    partitionFromDB.diskId = disk.id; changed = true
+                }
+                if (partitionFromDB.name != label && label.isNotEmpty()) {
+                    partitionFromDB.name = label; changed = true
+                }
+                if (partitionFromDB.sizeTB != sizeTB && sizeTB > 0) {
+                    partitionFromDB.sizeTB = sizeTB; changed = true
+                }
+                if (usedTB >= 0.0 && abs(partitionFromDB.usedTB - usedTB) > 0.0001) {
+                    partitionFromDB.usedTB = usedTB; changed = true
+                }
+                if (partitionFromDB.uuid.isBlank() && cand.uuid.isNotEmpty()) {
+                    partitionFromDB.uuid = cand.uuid; changed = true
+                }
+                if (partitionFromDB.letter.isBlank() && letter.isNotEmpty()) {
+                    partitionFromDB.letter = letter; changed = true
+                }
+                if (partitionFromDB.fsType.isBlank() && fsType.isNotEmpty()) {
+                    partitionFromDB.fsType = fsType; changed = true
+                }
+                if (changed) {
+                    DiskRepository.updatePartition(partitionFromDB); partitionsUpdated.incrementAndGet()
                 }
             }
         }
@@ -174,13 +282,12 @@ object OshiImporter {
      */
     private fun parseModel(model: String, manufacturer: String): String{
         val modelWithoutInfo = model.substringBefore("(").trim()
-        if(manufacturer.isEmpty()){
-            return modelWithoutInfo;
-        }else{
-            return modelWithoutInfo.replace(manufacturer, "", ignoreCase = true).trim()
+        return if (manufacturer.isEmpty()) {
+            modelWithoutInfo
+        } else {
+            modelWithoutInfo.replace(manufacturer, "", ignoreCase = true).trim()
         }
     }
-
 
     private fun bytesToTB(bytes: Long): Double {
         if (bytes <= 0) return 0.0
@@ -212,11 +319,6 @@ object OshiImporter {
     private fun extractWindowsLetter(mount: String): String {
         // Example: "C:\\" → "C"
         val trimmed = mount.trim()
-        return trimmed.substringBefore(":").uppercase()
-    }
-
-    private fun buildPartitionName(mount: String): String {
-        val letter = extractWindowsLetter(mount)
-        return if (letter.isNotEmpty()) "$letter:" else mount.ifBlank { "Partition" }
+        return trimmed.substringBefore(":").uppercase().takeIf { it.length == 1 } ?: ""
     }
 }
