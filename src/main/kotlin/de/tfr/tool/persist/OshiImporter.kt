@@ -234,6 +234,8 @@ object OshiImporter {
                     this.uuid = cand.uuid
                     this.fsType = fsType
                     this.tags = ""
+                    // Mark as virtual if there is no hardware disk backing
+                    this.virtual = cand.diskStore == null
                 }
                 val pid = DiskRepository.insertPartition(newPartition)
                 newPartition.id = pid
@@ -266,6 +268,14 @@ object OshiImporter {
                 }
                 if (changed) {
                     DiskRepository.updatePartition(partitionFromDB); partitionsUpdated.incrementAndGet()
+                }
+                if (partitionFromDB.virtual && cand.diskStore != null) {
+                    // If previously virtual but now we have hardware info, clear virtual flag
+                    partitionFromDB.virtual = false; changed = true
+                }
+                if (!partitionFromDB.virtual && cand.diskStore == null) {
+                    // Partition lost hardware backing – set virtual
+                    partitionFromDB.virtual = true; changed = true
                 }
             }
         }

@@ -146,8 +146,8 @@ class DiskCard(val disk: Disk) : StackPane() {
             val cloudIcon = if (cloudUrl != null) svgIcon(cloudUrl, 16.0, 16.0) else null
             cloudIcon?.isVisible = p.cloudBackup
             cloudIcon?.let {
-                StackPane.setAlignment(it, Pos.TOP_RIGHT)
-                StackPane.setMargin(it, Insets(2.0, 2.0, 0.0, 0.0))
+                setAlignment(it, Pos.TOP_RIGHT)
+                setMargin(it, Insets(2.0, 2.0, 0.0, 0.0))
             }
 
             // Lock bottom-right (small, yellow) – now as PNG
@@ -157,17 +157,35 @@ class DiskCard(val disk: Disk) : StackPane() {
             val isEncrypted = try { p.encrypted } catch (_: Exception) { p.type == PartitionType.EncryptedContainer.name }
             lockIcon?.isVisible = isEncrypted
             lockIcon?.let {
-                StackPane.setAlignment(it, Pos.BOTTOM_RIGHT)
-                StackPane.setMargin(it, Insets(0.0, 2.0, 2.0, 0.0))
+                setAlignment(it, Pos.BOTTOM_RIGHT)
+                setMargin(it, Insets(0.0, 2.0, 2.0, 0.0))
+            }
+
+            // Virtual icon top-left (indicates virtual partition)
+            val virtualUrl = javaClass.getResource("/virtual.png")?.toExternalForm()
+            val virtualIcon = if (virtualUrl != null) svgIcon(virtualUrl, 14.0, 14.0) else null
+            virtualIcon?.isVisible = try {
+                p.virtual
+            } catch (_: Exception) {
+                false
+            }
+            virtualIcon?.let {
+                setAlignment(it, Pos.TOP_LEFT)
+                setMargin(it, Insets(2.0, 0.0, 0.0, 2.0))
             }
 
             partStack.children += partBox
             if (cloudIcon != null) partStack.children += cloudIcon
             if (lockIcon != null) partStack.children += lockIcon
+            if (virtualIcon != null) partStack.children += virtualIcon
 
             // Visibility updates when properties change
             try { p.cloudBackupProp.addListener { _, _, new -> cloudIcon?.isVisible = new } } catch (_: Exception) {}
             try { p.encryptedProp.addListener { _, _, new -> lockIcon?.isVisible = new } } catch (_: Exception) {}
+            try {
+                p.virtualProp.addListener { _, _, new -> virtualIcon?.isVisible = new }
+            } catch (_: Exception) {
+            }
 
             partsBox.children += partStack
             parts += PartViews(partBox, name, size, barBg, barFill)
@@ -306,17 +324,17 @@ class DiskCard(val disk: Disk) : StackPane() {
      */
     fun resetHeightConstraints() {
         // Root
-        minHeight = Region.USE_COMPUTED_SIZE
-        prefHeight = Region.USE_COMPUTED_SIZE
-        maxHeight = Region.USE_COMPUTED_SIZE
+        minHeight = USE_COMPUTED_SIZE
+        prefHeight = USE_COMPUTED_SIZE
+        maxHeight = USE_COMPUTED_SIZE
         // Outer
-        outer.minHeight = Region.USE_COMPUTED_SIZE
-        outer.prefHeight = Region.USE_COMPUTED_SIZE
-        outer.maxHeight = Region.USE_COMPUTED_SIZE
+        outer.minHeight = USE_COMPUTED_SIZE
+        outer.prefHeight = USE_COMPUTED_SIZE
+        outer.maxHeight = USE_COMPUTED_SIZE
         // Card
-        card.minHeight = Region.USE_COMPUTED_SIZE
-        card.prefHeight = Region.USE_COMPUTED_SIZE
-        card.maxHeight = Region.USE_COMPUTED_SIZE
+        card.minHeight = USE_COMPUTED_SIZE
+        card.prefHeight = USE_COMPUTED_SIZE
+        card.maxHeight = USE_COMPUTED_SIZE
     }
 
     /**

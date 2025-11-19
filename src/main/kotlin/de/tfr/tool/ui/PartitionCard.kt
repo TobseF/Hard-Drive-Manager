@@ -110,7 +110,7 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
             footer.children += tagsLabel
         }
 
-        // Icons row for encryption and cloud backup
+        // Icons row for encryption, cloud backup and virtual flag
         val iconsRow = HBox(8.0)
         iconsRow.alignment = Pos.CENTER_LEFT
 
@@ -129,6 +129,13 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         if (cloudUrl != null && partition.cloudBackup) {
             val cloudIcon = svgIcon(cloudUrl, 16.0, 16.0)
             iconsRow.children += cloudIcon
+        }
+
+        // Virtual icon
+        val virtualUrl = javaClass.getResource("/virtual.png")?.toExternalForm()
+        if (virtualUrl != null && partition.virtual) {
+            val virtualIcon = svgIcon(virtualUrl, 16.0, 16.0)
+            iconsRow.children += virtualIcon
         }
 
         if (iconsRow.children.isNotEmpty()) {
@@ -194,19 +201,18 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
     }
 
     fun resetHeightConstraints() {
-        minHeight = Region.USE_COMPUTED_SIZE
-        prefHeight = Region.USE_COMPUTED_SIZE
-        maxHeight = Region.USE_COMPUTED_SIZE
-        outer.minHeight = Region.USE_COMPUTED_SIZE
-        outer.prefHeight = Region.USE_COMPUTED_SIZE
-        outer.maxHeight = Region.USE_COMPUTED_SIZE
-        card.minHeight = Region.USE_COMPUTED_SIZE
-        card.prefHeight = Region.USE_COMPUTED_SIZE
-        card.maxHeight = Region.USE_COMPUTED_SIZE
+        minHeight = USE_COMPUTED_SIZE
+        prefHeight = USE_COMPUTED_SIZE
+        maxHeight = USE_COMPUTED_SIZE
+        outer.minHeight = USE_COMPUTED_SIZE
+        outer.prefHeight = USE_COMPUTED_SIZE
+        outer.maxHeight = USE_COMPUTED_SIZE
+        card.minHeight = USE_COMPUTED_SIZE
+        card.prefHeight = USE_COMPUTED_SIZE
+        card.maxHeight = USE_COMPUTED_SIZE
     }
 
     fun setCardGrowEnabled(enabled: Boolean) {
         VBox.setVgrow(card, if (enabled) Priority.ALWAYS else Priority.NEVER)
     }
 }
-

@@ -130,6 +130,11 @@ object Database {
                 st.execute("ALTER TABLE partitions ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
             }
         }
+        if (!existing.contains("virtual")) {
+            conn.createStatement().use { st ->
+                st.execute("ALTER TABLE partitions ADD COLUMN virtual INTEGER NOT NULL DEFAULT 0")
+            }
+        }
     }
 
     private fun ensureDiskColumns() {

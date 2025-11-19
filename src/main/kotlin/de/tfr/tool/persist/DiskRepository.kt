@@ -22,6 +22,8 @@ object DiskRepository {
                     // Default: encrypted = true if type is EncryptedContainer
                     try {
                         p.encrypted = p.type == PartitionType.EncryptedContainer.name
+                        // Set virtual flag for encrypted containers as initial heuristic
+                        if (p.type == PartitionType.EncryptedContainer.name) p.virtual = true
                     } catch (_: Exception) {}
                     insertPartition(p)
                 }
@@ -40,7 +42,8 @@ object DiskRepository {
         }
         // partitions
         conn.createStatement().use { st ->
-            val rs = st.executeQuery("SELECT id, disk_id, name, letter, type, size_tb, used_tb, tags, encrypted, cloud_backup, uuid, fs_type, hidden FROM partitions ORDER BY id ASC")
+            val rs =
+                st.executeQuery("SELECT id, disk_id, name, letter, type, size_tb, used_tb, tags, encrypted, cloud_backup, uuid, fs_type, hidden, virtual FROM partitions ORDER BY id ASC")
             while (rs.next()) {
                 val p = rs.toPartition()
                 disks.find { it.id == p.diskId }?.partitions?.add(p)
@@ -91,7 +94,8 @@ object DiskRepository {
     }
 
     fun insertPartition(p: Partition): Long {
-        val sql = "INSERT INTO partitions(disk_id, name, letter, type, size_tb, used_tb, tags, encrypted, cloud_backup, uuid, fs_type, hidden) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"
+        val sql =
+            "INSERT INTO partitions(disk_id, name, letter, type, size_tb, used_tb, tags, encrypted, cloud_backup, uuid, fs_type, hidden, virtual) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
         Database.connection().prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS).use { ps ->
             ps.setLong(1, p.diskId)
             ps.setString(2, p.name)
@@ -105,6 +109,7 @@ object DiskRepository {
             ps.setString(10, p.uuid)
             ps.setString(11, p.fsType)
             ps.setInt(12, if (p.hidden) 1 else 0)
+            ps.setInt(13, if (p.virtual) 1 else 0)
             ps.executeUpdate()
             ps.generatedKeys.use { keys ->
                 return if (keys.next()) keys.getLong(1) else 0L
@@ -113,7 +118,8 @@ object DiskRepository {
     }
 
     fun updatePartition(p: Partition) {
-        val sql = "UPDATE partitions SET name=?, letter=?, type=?, size_tb=?, used_tb=?, tags=?, encrypted=?, cloud_backup=?, uuid=?, fs_type=?, hidden=? WHERE id=?"
+        val sql =
+            "UPDATE partitions SET name=?, letter=?, type=?, size_tb=?, used_tb=?, tags=?, encrypted=?, cloud_backup=?, uuid=?, fs_type=?, hidden=?, virtual=? WHERE id=?"
         Database.connection().prepareStatement(sql).use { ps ->
             ps.setString(1, p.name)
             ps.setString(2, p.letter)
@@ -126,7 +132,8 @@ object DiskRepository {
             ps.setString(9, p.uuid)
             ps.setString(10, p.fsType)
             ps.setInt(11, if (p.hidden) 1 else 0)
-            ps.setLong(12, p.id)
+            ps.setInt(12, if (p.virtual) 1 else 0)
+            ps.setLong(13, p.id)
             ps.executeUpdate()
         }
     }
@@ -165,5 +172,9 @@ object DiskRepository {
         try { uuid = getString("uuid") } catch (_: Exception) {}
         try { fsType = getString("fs_type") } catch (_: Exception) {}
         try { hidden = getInt("hidden") != 0 } catch (_: Exception) {}
+        try {
+            virtual = getInt("virtual") != 0
+        } catch (_: Exception) {
+        }
     }
 }

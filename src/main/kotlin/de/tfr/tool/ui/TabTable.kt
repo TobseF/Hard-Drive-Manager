@@ -60,6 +60,7 @@ class TabTable(
     private lateinit var fsTypeCol: TreeTableColumn<Any, String>
     private lateinit var encCol: TreeTableColumn<Any, Boolean>
     private lateinit var cloudCol: TreeTableColumn<Any, Boolean>
+    private lateinit var virtualCol: TreeTableColumn<Any, Boolean>
     private lateinit var hiddenCol: TreeTableColumn<Any, Boolean>
 
     // last provided dataset, needed for certain tooltips
@@ -68,7 +69,7 @@ class TabTable(
     init {
         padding = Insets(8.0)
         children += buildToolbar()
-        VBox.setVgrow(buildTable(), Priority.ALWAYS)
+        setVgrow(buildTable(), Priority.ALWAYS)
         children += tree
 
         // Reload table when "only partitions" setting changes
@@ -241,8 +242,7 @@ class TabTable(
         freeCol = TreeTableColumn<Any, String>(I18n.s("col.free")).apply {
             prefWidth = 100.0
             setCellValueFactory { data ->
-                val v = data.value.value
-                val free = when (v) {
+                val free = when (val v = data.value.value) {
                     is Disk -> (v.sizeTB - v.usedTB).coerceAtLeast(0.0)
                     is Partition -> (v.sizeTB - v.usedTB).coerceAtLeast(0.0)
                     else -> 0.0
@@ -269,8 +269,7 @@ class TabTable(
         barCol = TreeTableColumn<Any, Double>(I18n.s("col.usedBar")).apply {
             prefWidth = 140.0
             setCellValueFactory { data ->
-                val v = data.value.value
-                val pct = when (v) {
+                val pct = when (val v = data.value.value) {
                     is Disk -> v.usedTB.percentOf(v.sizeTB)
                     is Partition -> v.usedTB.percentOf(v.sizeTB)
                     else -> 0.0
@@ -413,8 +412,7 @@ class TabTable(
                         pctValue = item.coerceIn(0.0, 1.0)
                         updateBarWidth()
 
-                        val rowObj = tableRow?.item
-                        when (rowObj) {
+                        when (val rowObj = tableRow?.item) {
                             is Partition -> {
                                 val disk = tableRow.treeItem?.parent?.value as? Disk
                                 val total = disk?.sizeTB ?: 0.0
@@ -588,6 +586,25 @@ class TabTable(
             isEditable = true
         }
 
+        virtualCol = TreeTableColumn<Any, Boolean>(I18n.s("col.virtual")).apply {
+            prefWidth = 90.0
+            setCellValueFactory { data ->
+                when (val v = data.value.value) {
+                    is Partition -> v.virtualProp.also { prop ->
+                        prop.addListener { _, _, _ ->
+                            DiskRepository.updatePartition(
+                                v
+                            )
+                        }
+                    }
+
+                    else -> SimpleBooleanProperty(false)
+                }
+            }
+            cellFactory = CheckBoxTreeTableCell.forTreeTableColumn(this)
+            isEditable = true
+        }
+
         hiddenCol = TreeTableColumn<Any, Boolean>(I18n.s("col.hidden")).apply {
             prefWidth = 110.0
             setCellValueFactory { data ->
@@ -619,6 +636,7 @@ class TabTable(
             fsTypeCol,
             encCol,
             cloudCol,
+            virtualCol,
             hiddenCol
         )
         return tree
@@ -655,6 +673,7 @@ class TabTable(
         fsTypeCol.text = I18n.s("col.fsType")
         encCol.text = I18n.s("col.encrypted")
         cloudCol.text = I18n.s("col.cloud")
+        virtualCol.text = I18n.s("col.virtual")
         hiddenCol.text = I18n.s("col.hidden")
     }
 

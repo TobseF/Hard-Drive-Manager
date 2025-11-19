@@ -21,7 +21,8 @@ data class Partition(
     val cloudBackupProp: SimpleBooleanProperty = SimpleBooleanProperty(false),
     val uuidProp: SimpleStringProperty = SimpleStringProperty(""),
     val fsTypeProp: SimpleStringProperty = SimpleStringProperty(""),
-    val hiddenProp: SimpleBooleanProperty = SimpleBooleanProperty(false)
+    val hiddenProp: SimpleBooleanProperty = SimpleBooleanProperty(false),
+    val virtualProp: SimpleBooleanProperty = SimpleBooleanProperty(false) // NEW: indicates that the partition is virtual (e.g., encrypted container, loopback, network volume)
 ) {
     var id: Long get() = idProp.get(); set(v) = idProp.set(v)
     var diskId: Long get() = diskIdProp.get(); set(v) = diskIdProp.set(v)
@@ -36,6 +37,7 @@ data class Partition(
     var uuid: String get() = uuidProp.get(); set(v) = uuidProp.set(v)
     var fsType: String get() = fsTypeProp.get(); set(v) = fsTypeProp.set(v)
     var hidden: Boolean get() = hiddenProp.get(); set(v) = hiddenProp.set(v)
+    var virtual: Boolean get() = virtualProp.get(); set(v) = virtualProp.set(v)
 
     override fun toString(): String {
         return "Partition($letter:$name ${sizeTB.toTBString()} ($uuid))"
