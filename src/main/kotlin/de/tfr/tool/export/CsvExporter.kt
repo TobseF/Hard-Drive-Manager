@@ -1,10 +1,10 @@
 package de.tfr.tool.export
 
+import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.model.percentOf
 import de.tfr.tool.model.toTBString
-import de.tfr.tool.ui.DialogHelper
 import de.tfr.tool.ui.I18n
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager

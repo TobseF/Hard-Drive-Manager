@@ -1,5 +1,6 @@
 package de.tfr.tool.ui
 
+import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.control.*
@@ -9,7 +10,6 @@ import javafx.scene.image.ImageView
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
 import javafx.scene.layout.GridPane
-import javafx.stage.Stage
 import java.lang.module.ModuleDescriptor
 import java.util.*
 import java.util.function.Function
@@ -107,22 +107,9 @@ class SystemInfoDialog : Dialog<ButtonType>(){
         dialogPane.content = grid
     }
 
-    /**
-     * Shows the dialog with correct dark mode title bar.
-     */
+
     fun showDialog(): Optional<ButtonType> {
-        // Set icon for dialog window
-        dialogPane.scene?.window?.let { window ->
-            if (window is Stage) {
-                try {
-                    val iconStream = javaClass.getResourceAsStream("/info.png")
-                    if (iconStream != null) {
-                        window.icons.add(Image(iconStream))
-                    }
-                } catch (_: Exception) {
-                }
-            }
-        }
+        DialogHelper.setWindowIcon(dialogPane, "info.png")
         return DialogHelper.showDialog(this, ThemeManager.currentTheme == Theme.DARK)
     }
 

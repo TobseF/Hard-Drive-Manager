@@ -1,8 +1,13 @@
 package de.tfr.tool.ui.settings
 
 import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
+import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.persist.Database
-import de.tfr.tool.ui.*
+import de.tfr.tool.ui.I18n
+import de.tfr.tool.ui.Language
+import de.tfr.tool.ui.Theme
+import de.tfr.tool.ui.ThemeManager
+import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
@@ -11,7 +16,6 @@ import javafx.scene.layout.VBox
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import mu.KotlinLogging
-import net.yetihafen.javafx.customcaption.CustomCaption
 
 data class AppSettings(
     val equalCardHeights: Boolean,
@@ -35,14 +39,15 @@ object SettingsDialog {
     private val logger = KotlinLogging.logger {}
 
     fun show(current: AppSettings): SettingsResult {
-        val dlg = Dialog<ButtonType>()
-        dlg.title = I18n.s("settings.title")
-        dlg.headerText = null
+        val dialog = Dialog<ButtonType>()
+        dialog.title = I18n.s("settings.title")
+        dialog.headerText = null
+        DialogHelper.setWindowIcon(dialog.dialogPane, "settings.png")
 
         // Create custom button types with translated texts
         val okButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
         val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
-        dlg.dialogPane.buttonTypes.setAll(okButtonType, cancelButtonType)
+        dialog.dialogPane.buttonTypes.setAll(okButtonType, cancelButtonType)
 
         val content = VBox(12.0).apply { padding = Insets(10.0) }
 
@@ -91,9 +96,9 @@ object SettingsDialog {
         val dbRow = HBox(8.0).apply {
             alignment = Pos.CENTER_LEFT
             val lbl = Label(I18n.s("settings.dbPath"))
-            val tf = TextField(current.dbPath ?: "")
-            tf.isEditable = false
-            tf.prefColumnCount = 32
+            val pathField = TextField(current.dbPath ?: "")
+            pathField.isEditable = false
+            pathField.prefColumnCount = 18
 
             // Browse button to pick a different DB file
             val btnBrowse = Button(I18n.s("settings.db.browse"))
@@ -104,8 +109,8 @@ object SettingsDialog {
                     FileChooser.ExtensionFilter(I18n.s("file.filter.sqlite"), "*.db", "*.sqlite"),
                     FileChooser.ExtensionFilter(I18n.s("file.filter.all"), "*.*")
                 )
-                val file = chooser.showOpenDialog(dlg.dialogPane.scene?.window)
-                if (file != null) tf.text = file.absolutePath
+                val file = chooser.showOpenDialog(dialog.dialogPane.scene?.window)
+                if (file != null) pathField.text = file.absolutePath
             }
 
             // Clear DB button to remove all data from the current database
@@ -148,7 +153,7 @@ object SettingsDialog {
                 }
             }
 
-            children += listOf(lbl, tf, btnBrowse, btnClear)
+            children += listOf(lbl, pathField, btnBrowse, btnClear)
         }
 
         // Toggle "Show hidden" (optionally show/change it in the dialog)
@@ -161,7 +166,7 @@ object SettingsDialog {
         content.children += rowTheme
         content.children += rowLang
         content.children += cbShowHidden
-        dlg.dialogPane.content = content
+        dialog.dialogPane.content = content
 
         // Live preview on theme change inside the dialog
         themeBox.selectionModel.selectedIndexProperty().addListener { _, _, newIdx ->
@@ -169,8 +174,8 @@ object SettingsDialog {
             ThemeManager.setTheme(previewTheme)
 
             // Update dialog title bar for the new theme
-            javafx.application.Platform.runLater {
-                val window = dlg.dialogPane.scene?.window
+            Platform.runLater {
+                val window = dialog.dialogPane.scene?.window
                 if (window is Stage) {
                     ThemeHelper.setDarkTitleBar(window, previewTheme)
                 }
@@ -183,7 +188,7 @@ object SettingsDialog {
             I18n.setLanguage(previewLang)
 
             // Update all labels and buttons with new language
-            dlg.title = I18n.s("settings.title")
+            dialog.title = I18n.s("settings.title")
             cbEqual.text = I18n.s("settings.equalHeight")
             cbFixed.text = I18n.s("settings.fixedHeight")
             (rowFixed.children[1] as Label).text = I18n.s("settings.heightPx")
@@ -200,11 +205,11 @@ object SettingsDialog {
             cbShowHidden.text = I18n.s("btn.showHidden")
 
             // Update button texts
-            (dlg.dialogPane.lookupButton(okButtonType) as? Button)?.text = I18n.s("btn.ok")
-            (dlg.dialogPane.lookupButton(cancelButtonType) as? Button)?.text = I18n.s("btn.cancel")
+            (dialog.dialogPane.lookupButton(okButtonType) as? Button)?.text = I18n.s("btn.ok")
+            (dialog.dialogPane.lookupButton(cancelButtonType) as? Button)?.text = I18n.s("btn.cancel")
         }
 
-        val res = DialogHelper.showDialog(dlg, current.theme == Theme.DARK)
+        val res = DialogHelper.showDialog(dialog, current.theme == Theme.DARK)
         if (!res.isPresent || res.get() != okButtonType) {
             // Restore original theme and language if user cancelled
             ThemeManager.setTheme(current.theme)

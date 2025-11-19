@@ -1,5 +1,6 @@
 package de.tfr.tool.ui
 
+import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.model.percentOf

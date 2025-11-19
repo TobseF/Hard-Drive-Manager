@@ -2,6 +2,7 @@ package de.tfr.tool.ui
 
 import de.tfr.tool.de.tfr.tool.persist.Settings
 import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
+import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
@@ -20,7 +21,6 @@ import javafx.scene.control.*
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.layout.*
 import javafx.stage.Stage
-import net.yetihafen.javafx.customcaption.CustomCaption
 import java.nio.file.Paths
 
 class MainView(private val primaryStage: Stage) : BorderPane() {

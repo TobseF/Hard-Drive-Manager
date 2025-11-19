@@ -1,6 +1,6 @@
 package de.tfr.tool.export
 
-import de.tfr.tool.ui.DialogHelper
+import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.ui.I18n
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager
