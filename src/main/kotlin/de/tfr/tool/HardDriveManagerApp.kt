@@ -33,6 +33,16 @@ class HardDriveManagerApp : Application() {
         val scene = Scene(root, 1280.0, 800.0)
         primaryStage.title = I18n.s("app.title")
         I18n.addListener { primaryStage.title = I18n.s("app.title") }
+
+        // Set application icon
+        try {
+            val iconStream = javaClass.getResourceAsStream("/icon.png")
+            if (iconStream != null) {
+                primaryStage.icons.add(javafx.scene.image.Image(iconStream))
+            }
+        } catch (_: Exception) {
+        }
+
         primaryStage.scene = scene
         primaryStage.show()
         root.applyTheme()
