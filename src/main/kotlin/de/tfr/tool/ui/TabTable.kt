@@ -17,6 +17,7 @@ import javafx.scene.control.*
 import javafx.scene.control.cell.CheckBoxTreeTableCell
 import javafx.scene.control.cell.TextFieldTreeTableCell
 import javafx.scene.layout.*
+import mu.KotlinLogging
 
 /**
  * Encapsulates all table UI and logic previously mixed into MainView.
@@ -26,6 +27,8 @@ class TabTable(
     private val showHiddenProp: BooleanProperty = SimpleBooleanProperty(false),
     private val onDataChanged: () -> Unit = {}
 ) : VBox(8.0) {
+
+    private val logger = KotlinLogging.logger {}
 
     // Expose the TreeTableView for external usages (e.g., CSV export)
     val tree: TreeTableView<Any> = TreeTableView()
@@ -67,11 +70,19 @@ class TabTable(
     // last provided dataset, needed for certain tooltips
     private var currentDisks: List<Disk> = emptyList()
 
+    // Context menu items
+    private val contextMenu = ContextMenu()
+    private val deleteMenuItem = MenuItem()
+    private val moveMenuItem = MenuItem()
+
     init {
         padding = Insets(8.0)
         children += buildToolbar()
         setVgrow(buildTable(), Priority.ALWAYS)
         children += tree
+
+        // Initialize context menu
+        setupContextMenu()
 
         // Reload table when "only partitions" setting changes
         onlyPartitionsProp.addListener { _, _, _ ->
@@ -676,6 +687,10 @@ class TabTable(
         cloudCol.text = I18n.s("col.cloud")
         virtualCol.text = I18n.s("col.virtual")
         hiddenCol.text = I18n.s("col.hidden")
+
+        // Context menu items
+        deleteMenuItem.text = I18n.s("menu.context.delete")
+        moveMenuItem.text = I18n.s("menu.context.move")
     }
 
     fun updateData(disks: List<Disk>) {
@@ -815,5 +830,135 @@ class TabTable(
     private fun traverse(item: TreeItem<*>, action: (TreeItem<*>) -> Unit) {
         action(item)
         item.children.forEach { traverse(it, action) }
+    }
+
+    private fun setupContextMenu() {
+        // Configure delete menu item
+        deleteMenuItem.text = I18n.s("menu.context.delete")
+        deleteMenuItem.setOnAction { onDeleteSelected() }
+
+        // Configure move menu item
+        moveMenuItem.text = I18n.s("menu.context.move")
+        moveMenuItem.setOnAction { onMovePartition() }
+
+        // Add items to context menu
+        contextMenu.items.setAll(deleteMenuItem, moveMenuItem)
+
+        // Attach context menu to the tree table
+        tree.setOnContextMenuRequested { event ->
+            val selectedItem = tree.selectionModel.selectedItem
+            if (selectedItem != null) {
+                val value = selectedItem.value
+                // Show move option only for partitions
+                if (value is Partition) {
+                    contextMenu.items.setAll(deleteMenuItem, moveMenuItem)
+                } else {
+                    contextMenu.items.setAll(deleteMenuItem)
+                }
+                contextMenu.show(tree, event.screenX, event.screenY)
+            }
+        }
+
+        // Hide context menu when clicking elsewhere
+        tree.setOnMousePressed { event ->
+            if (event.isPrimaryButtonDown) {
+                contextMenu.hide()
+            }
+        }
+    }
+
+    private fun onMovePartition() {
+        val selectedItem = tree.selectionModel.selectedItem ?: return
+        val partition = selectedItem.value as? Partition ?: return
+
+        // Get list of all disks
+        val allDisks = currentDisks
+
+        if (allDisks.isEmpty()) {
+            Alert(Alert.AlertType.WARNING, I18n.s("alert.add.partition.selectDisk")).showAndWait()
+            return
+        }
+
+        // Create dialog
+        val dialog = Dialog<Disk>()
+        dialog.title = I18n.s("alert.move.partition.title")
+        dialog.headerText = I18n.s("alert.move.partition.label")
+
+        // Create disk selection combo box
+        val diskCombo = ComboBox<Disk>()
+        diskCombo.items.setAll(allDisks)
+        diskCombo.converter = object : javafx.util.StringConverter<Disk>() {
+            override fun toString(disk: Disk?): String {
+                if (disk == null) return ""
+                val partitionNames = disk.partitions.joinToString(", ") { it.name }
+                return if (partitionNames.isNotEmpty()) {
+                    "${disk.name} ($partitionNames)"
+                } else {
+                    disk.name
+                }
+            }
+
+            override fun fromString(string: String?): Disk? {
+                // Extract disk name from "DiskName (partition1, partition2)" format
+                val diskName = string?.substringBefore(" (")?.trim() ?: return null
+                return allDisks.find { it.name == diskName }
+            }
+        }
+
+        // Pre-select current disk or first disk
+        val currentDisk = allDisks.find { it.id == partition.diskId }
+        diskCombo.value = currentDisk ?: allDisks.firstOrNull()
+
+        // Layout
+        val content = VBox(10.0)
+        content.padding = Insets(10.0)
+        content.children.add(diskCombo)
+        dialog.dialogPane.content = content
+
+        // Buttons
+        val okButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
+        val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
+        dialog.dialogPane.buttonTypes.setAll(okButtonType, cancelButtonType)
+
+        // Result converter
+        dialog.setResultConverter { buttonType ->
+            if (buttonType == okButtonType) diskCombo.value else null
+        }
+
+        // Show dialog and process result
+        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        if (result.isPresent) {
+            val targetDisk = result.get()
+            if (targetDisk.id != partition.diskId) {
+                try {
+                    // Store names for success message
+                    val partitionName = partition.name
+                    val targetDiskName = targetDisk.name
+
+                    // Update partition's disk ID in database
+                    partition.diskId = targetDisk.id
+                    DiskRepository.updatePartition(partition)
+
+                    logger.info { "Moved partition $partitionName to disk $targetDiskName" }
+
+                    // Refresh data FIRST to reload from database
+                    onDataChanged()
+
+                    // Show success message AFTER data is reloaded
+                    val successAlert = Alert(Alert.AlertType.INFORMATION)
+                    successAlert.title = I18n.s("alert.move.partition.title")
+                    successAlert.headerText = null
+                    successAlert.contentText = I18n.s("alert.move.partition.success", partitionName, targetDiskName)
+                    DialogHelper.showDialog(successAlert, ThemeManager.currentTheme == Theme.DARK)
+                } catch (e: Exception) {
+                    logger.error(e) { "Failed to move partition to disk $targetDisk" }
+                    val errorAlert = Alert(Alert.AlertType.ERROR)
+                    errorAlert.title = I18n.s("alert.move.partition.title")
+                    errorAlert.headerText = null
+                    errorAlert.contentText = I18n.s("alert.move.partition.error", e.message ?: "Unknown error")
+                    DialogHelper.showDialog(errorAlert, ThemeManager.currentTheme == Theme.DARK)
+                }
+            }
+        }
     }
 }

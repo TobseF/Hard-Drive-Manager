@@ -119,21 +119,22 @@ object DiskRepository {
 
     fun updatePartition(p: Partition) {
         val sql =
-            "UPDATE partitions SET name=?, letter=?, type=?, size_tb=?, used_tb=?, tags=?, encrypted=?, cloud_backup=?, uuid=?, fs_type=?, hidden=?, virtual=? WHERE id=?"
+            "UPDATE partitions SET disk_id=?, name=?, letter=?, type=?, size_tb=?, used_tb=?, tags=?, encrypted=?, cloud_backup=?, uuid=?, fs_type=?, hidden=?, virtual=? WHERE id=?"
         Database.connection().prepareStatement(sql).use { ps ->
-            ps.setString(1, p.name)
-            ps.setString(2, p.letter)
-            ps.setString(3, p.type)
-            ps.setDouble(4, p.sizeTB)
-            ps.setDouble(5, p.usedTB)
-            ps.setString(6, p.tags)
-            ps.setInt(7, if (p.encrypted) 1 else 0)
-            ps.setInt(8, if (p.cloudBackup) 1 else 0)
-            ps.setString(9, p.uuid)
-            ps.setString(10, p.fsType)
-            ps.setInt(11, if (p.hidden) 1 else 0)
-            ps.setInt(12, if (p.virtual) 1 else 0)
-            ps.setLong(13, p.id)
+            ps.setLong(1, p.diskId)
+            ps.setString(2, p.name)
+            ps.setString(3, p.letter)
+            ps.setString(4, p.type)
+            ps.setDouble(5, p.sizeTB)
+            ps.setDouble(6, p.usedTB)
+            ps.setString(7, p.tags)
+            ps.setInt(8, if (p.encrypted) 1 else 0)
+            ps.setInt(9, if (p.cloudBackup) 1 else 0)
+            ps.setString(10, p.uuid)
+            ps.setString(11, p.fsType)
+            ps.setInt(12, if (p.hidden) 1 else 0)
+            ps.setInt(13, if (p.virtual) 1 else 0)
+            ps.setLong(14, p.id)
             ps.executeUpdate()
         }
     }
