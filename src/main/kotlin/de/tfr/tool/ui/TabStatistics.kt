@@ -2,10 +2,10 @@ package de.tfr.tool.ui
 
 import de.tfr.tool.model.Disk
 import javafx.geometry.Insets
+import javafx.scene.chart.PieChart
 import javafx.scene.control.ScrollPane
 import javafx.scene.control.Tooltip
-import javafx.scene.chart.PieChart
-import javafx.scene.layout.VBox
+import javafx.scene.layout.FlowPane
 
 /**
  * Encapsulates the complete statistics view (pie charts) from the MainView.
@@ -15,7 +15,11 @@ import javafx.scene.layout.VBox
  */
 class TabStatistics : ScrollPane() {
 
-    private val container = VBox(16.0).apply { padding = Insets(12.0) }
+    private val container = FlowPane().apply {
+        padding = Insets(12.0)
+        hgap = 16.0
+        vgap = 16.0
+    }
 
     private val pieTotalFreeUsed = PieChart().apply { title = I18n.s("stats.total.title") }
     private val pieCapacityPerDisk = PieChart().apply { title = I18n.s("stats.capacityPerDisk.title") }
@@ -29,7 +33,8 @@ class TabStatistics : ScrollPane() {
         listOf(pieTotalFreeUsed, pieCapacityPerDisk, pieUsedByTags).forEach { chart ->
             chart.labelsVisibleProperty().set(false)
             chart.legendVisibleProperty().set(true)
-            chart.setPrefSize(600.0, 360.0)
+            chart.maxWidth = 400.0
+            chart.setPrefSize(400.0, 360.0)
             chart.minHeight = 300.0
         }
 
