@@ -1,4 +1,4 @@
-package de.tfr.tool.de.tfr.tool.ui.util
+package de.tfr.tool.de.tfr.tool.ui.theme
 
 import de.tfr.tool.ui.Theme
 import javafx.stage.Stage

@@ -2,7 +2,7 @@ package de.tfr.tool.ui.settings
 
 import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.de.tfr.tool.ui.i18n.Language
-import de.tfr.tool.de.tfr.tool.ui.util.ThemeHelper
+import de.tfr.tool.de.tfr.tool.ui.theme.ThemeHelper
 import de.tfr.tool.model.DisplayUnit
 import de.tfr.tool.persist.Database
 import de.tfr.tool.ui.Theme
