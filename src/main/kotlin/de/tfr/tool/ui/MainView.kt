@@ -1,15 +1,17 @@
 package de.tfr.tool.ui
 
-import de.tfr.tool.de.tfr.tool.persist.Settings
-import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
-import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
+import de.tfr.tool.de.tfr.tool.ui.i18n.Language
+import de.tfr.tool.de.tfr.tool.ui.util.ThemeHelper
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
 import de.tfr.tool.persist.Database
 import de.tfr.tool.persist.DiskRepository
+import de.tfr.tool.persist.Settings
 import de.tfr.tool.ui.settings.AppSettings
 import de.tfr.tool.ui.settings.SettingsDialog
+import de.tfr.tool.ui.util.DialogHelper
 import javafx.application.Platform
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleDoubleProperty
@@ -21,9 +23,12 @@ import javafx.scene.control.*
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.layout.*
 import javafx.stage.Stage
+import mu.KotlinLogging
 import java.nio.file.Paths
 
 class MainView(private val primaryStage: Stage) : BorderPane() {
+    private val logger = KotlinLogging.logger {}
+
     private val disks = SimpleObjectProperty<MutableList<Disk>>(mutableListOf())
     private val equalCardHeightsProp = SimpleBooleanProperty(false)
     private val fixedCardHeightEnabledProp = SimpleBooleanProperty(false)
@@ -138,9 +143,10 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
                         )
                         Alert(AlertType.INFORMATION, msg).showAndWait()
                     }
-                } catch (ex: Exception) {
+                } catch (e: Exception) {
+                    logger.error(e) { "Failed to import disk data" }
                     Platform.runLater {
-                        Alert(AlertType.ERROR, I18n.s("alert.import.error", ex.message ?: "")).showAndWait()
+                        Alert(AlertType.ERROR, I18n.s("alert.import.error", e.message ?: "")).showAndWait()
                     }
                 } finally {
                     Platform.runLater { toolbar.isDisable = false }
@@ -289,6 +295,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
             fixedCardHeightPx = fixedCardHeightPxProp.get(),
             theme = ThemeManager.currentTheme,
             language = I18n.currentLanguage,
+            displayUnit = Settings.displayUnit,
             dbPath = try { Database.getCurrentDbPath().toString() } catch (_: Exception) { null },
             showHidden = showHiddenProp.get()
         )
@@ -303,11 +310,17 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         fixedCardHeightPxProp.set(setting.fixedCardHeightPx)
         showHiddenProp.set(setting.showHidden)
 
+        // Apply displayUnit setting
+        Settings.displayUnit = setting.displayUnit
+
         // Theme & Language
         themeProp.set(setting.theme)
         ThemeManager.setTheme(setting.theme)
         I18n.setLanguage(setting.language)
         applyTranslations()
+
+        // Refresh UI to apply new display unit
+        applySortingAndGrouping()
 
         // Switch database path if needed
         if (result.dbPathChanged) {

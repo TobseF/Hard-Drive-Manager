@@ -1,9 +1,9 @@
 package de.tfr.tool.export
 
-import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
-import de.tfr.tool.ui.I18n
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager
+import de.tfr.tool.ui.util.DialogHelper
 import javafx.embed.swing.SwingFXUtils
 import javafx.scene.Node
 import javafx.scene.SnapshotParameters

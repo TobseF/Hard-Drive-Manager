@@ -2,8 +2,8 @@ package de.tfr.tool.ui
 
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.PartitionType
+import de.tfr.tool.model.formatSize
 import de.tfr.tool.model.percentOf
-import de.tfr.tool.model.toTBString
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
@@ -60,7 +60,7 @@ class DiskCard(val disk: Disk) : StackPane() {
         titleLabel = Label(disk.name)
         titleLabel.style = "-fx-font-size: 18px; -fx-font-weight: bold;"
 
-        sizeLabelTop = Label(disk.sizeTB.toTBString())
+        sizeLabelTop = Label(disk.sizeMB.formatSize())
         sizeLabelTop.style = "-fx-font-size: 18px; -fx-text-fill: #444;"
         HBox.setHgrow(Region(), Priority.ALWAYS)
 
@@ -96,7 +96,7 @@ class DiskCard(val disk: Disk) : StackPane() {
             val name = Label(partitionDisplayName(p.letter, p.name))
             name.style = "-fx-font-size: 13px; -fx-text-fill: #333333;"
 
-            val size = Label(p.sizeTB.toTBString())
+            val size = Label(p.sizeMB.formatSize())
             size.style = "-fx-font-size: 13px; -fx-text-fill: #444;"
 
             val lockEmoji = Label("🔒")
@@ -131,7 +131,7 @@ class DiskCard(val disk: Disk) : StackPane() {
             barFill.isManaged = false
             // Bind to actual laid-out width of the bar (which VBox controls)
             barBg.widthProperty().bind(bar.widthProperty().subtract(20))
-            barFill.widthProperty().bind(barBg.widthProperty().multiply(p.usedTB.percentOf(p.sizeTB)))
+            barFill.widthProperty().bind(barBg.widthProperty().multiply(p.usedMB.percentOf(p.sizeMB)))
 
             bar.children.addAll(barBg, barFill)
 
@@ -224,7 +224,7 @@ class DiskCard(val disk: Disk) : StackPane() {
         // Bind widths to the actual laid-out width of the bar
         driveBarBg.widthProperty().bind(driveBar.widthProperty().subtract(20))
         driveBarFill.widthProperty().bind(
-            driveBarBg.widthProperty().multiply(disk.usedTB.percentOf(disk.sizeTB))
+            driveBarBg.widthProperty().multiply(disk.usedMB.percentOf(disk.sizeMB))
         )
 
         driveBar.children.addAll(driveBarBg, driveBarFill)

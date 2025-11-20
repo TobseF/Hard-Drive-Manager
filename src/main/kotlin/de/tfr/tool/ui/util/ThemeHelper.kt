@@ -1,4 +1,4 @@
-package de.tfr.tool.de.tfr.tool.ui
+package de.tfr.tool.de.tfr.tool.ui.util
 
 import de.tfr.tool.ui.Theme
 import javafx.stage.Stage
@@ -10,7 +10,7 @@ object ThemeHelper {
     }
 
     fun setDarkTitleBar(stage: Stage, dark: Boolean) {
-        if ((System.getProperty("os.name")?:"").lowercase().contains("windows")) {
+        if ((System.getProperty("os.name") ?: "").lowercase().contains("windows")) {
             CustomCaption.setImmersiveDarkMode(stage, dark)
         }
     }

@@ -1,6 +1,8 @@
 package de.tfr.tool.ui
 
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.Disk
+import de.tfr.tool.model.formatSize
 import javafx.geometry.Insets
 import javafx.scene.chart.PieChart
 import javafx.scene.control.ScrollPane
@@ -54,8 +56,8 @@ class TabStatistics : ScrollPane() {
 
     fun updateData(disks: List<Disk>) {
         // 1) Total free vs. used
-        val totalSize = disks.sumOf { it.sizeTB.coerceAtLeast(0.0) }
-        val totalUsed = disks.sumOf { it.usedTB.coerceAtLeast(0.0) }
+        val totalSize = disks.sumOf { it.sizeMB.coerceAtLeast(0.0) }
+        val totalUsed = disks.sumOf { it.usedMB.coerceAtLeast(0.0) }
         val totalFree = (totalSize - totalUsed).coerceAtLeast(0.0)
         setPieData(
             pieTotalFreeUsed,
@@ -66,7 +68,7 @@ class TabStatistics : ScrollPane() {
         )
 
         // 2) Total capacity per disk
-        val byDisk = disks.map { it.name to it.sizeTB.coerceAtLeast(0.0) }
+        val byDisk = disks.map { it.name to it.sizeMB.coerceAtLeast(0.0) }
         setPieData(pieCapacityPerDisk, byDisk)
 
         // 3) Used by tags (Partition.Tags, Fallback auf Disk.Tag, oder "Ungetaggt")
@@ -82,7 +84,7 @@ class TabStatistics : ScrollPane() {
                         if (fallback.isNotEmpty()) listOf(fallback) else listOf(I18n.s("stats.byTag.fallback"))
                     }
                 tags.forEach { t ->
-                    tagMap[t] = (tagMap[t] ?: 0.0) + p.usedTB.coerceAtLeast(0.0)
+                    tagMap[t] = (tagMap[t] ?: 0.0) + p.usedMB.coerceAtLeast(0.0)
                 }
             }
         }
@@ -101,15 +103,16 @@ class TabStatistics : ScrollPane() {
         }
         chart.data.setAll(data)
 
-        // Tooltips with TB + percent
+        // Tooltips with formatted size + percent
         val denom = if (total > 0.0) total else data.sumOf { it.pieValue }
         chart.data.forEach { d ->
             val value = d.pieValue
             val pct = if (denom > 0.0) (value / denom) * 100.0 else 0.0
+            val formattedSize = value.formatSize()  // Use formatSize() to apply current display unit
             val label = if (filtered.isEmpty()) I18n.s("stats.none") else I18n.s(
                 "stats.tooltip.value",
                 d.name,
-                String.format("%.1f", value),
+                formattedSize,
                 String.format("%.1f", pct)
             )
             val tip = Tooltip(label)

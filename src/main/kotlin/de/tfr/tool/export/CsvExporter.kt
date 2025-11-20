@@ -1,13 +1,13 @@
 package de.tfr.tool.export
 
-import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
+import de.tfr.tool.model.formatSize
 import de.tfr.tool.model.percentOf
-import de.tfr.tool.model.toTBString
-import de.tfr.tool.ui.I18n
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager
+import de.tfr.tool.ui.util.DialogHelper
 import javafx.scene.control.Alert
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.control.TreeTableView
@@ -36,11 +36,11 @@ object CsvExporter {
             // Columns from the table (excluding the additionally inserted first column "Disk")
             0 -> p.name                                // Name
             1 -> p.type                                // Type
-            2 -> p.sizeTB.toTBString()                 // Size
-            3 -> p.usedTB.toTBString()                 // Used
-            4 -> (p.sizeTB - p.usedTB).coerceAtLeast(0.0).toTBString() // Free
+            2 -> p.sizeMB.formatSize()                 // Size
+            3 -> p.usedMB.formatSize()                 // Used
+            4 -> (p.sizeMB - p.usedMB).coerceAtLeast(0.0).formatSize() // Free
             5 -> {
-                val pct = p.usedTB.percentOf(p.sizeTB)
+                val pct = p.usedMB.percentOf(p.sizeMB)
                 String.format("%d %%", Math.round(pct * 100))
             }                                         // % Used
             6 -> ""                                   // Size/Disk (bar)
@@ -59,25 +59,25 @@ object CsvExporter {
         }
 
         fun csvEscape(field: String): String {
-            val needsQuotes = field.contains(';') || field.contains('\n') || field.contains('\r') || field.contains('"')
-            var f = field
-            if (field.contains('"')) {
-                f = field.replace("\"", "\"\"")
+            return if (field.contains(";") || field.contains("\"") || field.contains("\n")) {
+                "\"" + field.replace("\"", "\"\"") + "\""
+            } else {
+                field
             }
-            return if (needsQuotes) "\"${f}\"" else f
         }
 
-        val cols = table.columns
-        // Header: additional first column "Disk" before the visible table columns
-        val header = buildString {
-            append(I18n.s("csv.header.disk"))
-            if (cols.isNotEmpty()) append(';')
-            append(cols.joinToString(";") { csvEscape(it.text ?: "") })
-        }
-
+        // Build header row
+        val cols = listOf(
+            I18n.s("col.disk"), I18n.s("col.name"), I18n.s("col.type"), I18n.s("col.size"),
+            I18n.s("col.used"), I18n.s("col.free"), I18n.s("col.percentUsed"), "",
+            "", I18n.s("col.tag"), I18n.s("col.letter"), I18n.s("col.model"),
+            I18n.s("col.manufacturer"), I18n.s("col.serial"), I18n.s("col.uuid"),
+            I18n.s("col.fsType"), I18n.s("col.encrypted"), I18n.s("col.cloudBackup"), I18n.s("col.hidden")
+        )
         val lines = mutableListOf<String>()
-        lines += header
+        lines += cols.map { csvEscape(it) }.joinToString(";")
 
+        // Data rows
         disks.forEach { d ->
             if (!showHidden && d.hidden) return@forEach
             d.partitions.forEach { p ->
@@ -85,7 +85,7 @@ object CsvExporter {
                 val values = mutableListOf<String>()
                 values += csvEscape(d.name) // first column: disk
                 // Then the values for each visible table column (in current order)
-                values += cols.mapIndexed { idx, _ -> csvEscape(cellTextForPartition(p, idx)) }
+                values += cols.indices.drop(1).map { idx -> csvEscape(cellTextForPartition(p, idx - 1)) }
                 lines += values.joinToString(";")
             }
         }
@@ -109,3 +109,4 @@ object CsvExporter {
         }
     }
 }
+

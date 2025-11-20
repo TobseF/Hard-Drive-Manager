@@ -1,4 +1,4 @@
-package de.tfr.tool.ui
+package de.tfr.tool.de.tfr.tool.ui.i18n
 
 import javafx.beans.property.SimpleObjectProperty
 import java.text.MessageFormat
@@ -22,13 +22,22 @@ object I18n {
         listeners.forEach { it.invoke() }
     }
 
-    fun addListener(listener: () -> Unit) { listeners += listener }
-    fun removeListener(listener: () -> Unit) { listeners -= listener }
+    fun addListener(listener: () -> Unit) {
+        listeners += listener
+    }
+
+    fun removeListener(listener: () -> Unit) {
+        listeners -= listener
+    }
 
     private fun loadBundle(lang: Language): ResourceBundle {
         val base = "i18n.messages"
         val locale = Locale.forLanguageTag(lang.code)
-        return ResourceBundle.getBundle(base, locale, ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT))
+        return ResourceBundle.getBundle(
+            base,
+            locale,
+            ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT)
+        )
     }
 
     fun s(key: String, vararg args: Any?): String {

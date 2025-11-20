@@ -64,7 +64,7 @@ object OshiImporter {
             val mountRaw: String,
             val sizeBytes: Long,
             val diskStore: HWDiskStore?,
-            var usedTB: Double = 0.0,
+            var usedMB: Double = 0.0,
             var label: String = "",
             var mountPoint: String = "",
             var fsType: String = ""
@@ -97,9 +97,9 @@ object OshiImporter {
             val sUuid = (store.uuid ?: "").trim()
             val sMount = (store.mount ?: store.name ?: "").trim()
             val candidate = findCandidate(sUuid, sMount)
-            val usedTB = bytesToTB(store.totalSpace - store.usableSpace)
+            val usedMB = bytesToMB(store.totalSpace - store.usableSpace)
             if (candidate != null) {
-                candidate.usedTB = usedTB
+                candidate.usedMB = usedMB
                 candidate.label = store.label ?: ""
                 candidate.mountPoint = sMount
                 candidate.fsType = store.type ?: ""
@@ -110,7 +110,7 @@ object OshiImporter {
                     mountRaw = sMount,
                     sizeBytes = store.totalSpace, // approximate size
                     diskStore = null,
-                    usedTB = usedTB,
+                    usedMB = usedMB,
                     label = store.label ?: "",
                     mountPoint = sMount,
                     fsType = store.type ?: ""
@@ -153,12 +153,12 @@ object OshiImporter {
                 val modelSystemInfo = (diskStore.model ?: "").trim()
                 val manufacturer = guessManufacturer(modelSystemInfo)
                 val model = parseModel(modelSystemInfo, manufacturer)
-                val sizeTB = bytesToTB(diskStore.size)
+                val sizeMB = bytesToMB(diskStore.size)
                 val type = guessType(model)
                 val keySerial = serial.lowercase()
                 var d: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
                 if (d == null) {
-                    d = disksByModelSize[model.lowercase() + "|" + sizeTB.toString()]
+                    d = disksByModelSize[model.lowercase() + "|" + sizeMB.toString()]
                 }
                 val generatedDriveName = listOf(manufacturer, type).filter { it.isNotBlank() }.joinToString(" ")
                     .ifBlank { model.ifBlank { serial }.ifBlank { "Disk" } }
@@ -169,20 +169,20 @@ object OshiImporter {
                         this.manufacturer = manufacturer
                         this.serial = serial
                         this.type = type
-                        this.sizeTB = sizeTB
+                        this.sizeMB = sizeMB
                         this.tag = ""
                     }
                     val newId = DiskRepository.insertDisk(newDisk)
                     newDisk.id = newId
                     existingDisks += newDisk
                     if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
-                    disksByModelSize[model.lowercase() + "|" + sizeTB.toString()] = newDisk
+                    disksByModelSize[model.lowercase() + "|" + sizeMB.toString()] = newDisk
                     disksInserted.incrementAndGet()
                     newDisk
                 } else {
                     var changed = false
-                    if (d.sizeTB != sizeTB && sizeTB > 0) {
-                        d.sizeTB = sizeTB; changed = true
+                    if (d.sizeMB != sizeMB && sizeMB > 0) {
+                        d.sizeMB = sizeMB; changed = true
                     }
                     if (d.model.isBlank() && model.isNotEmpty()) {
                         d.model = model; changed = true
@@ -218,8 +218,8 @@ object OshiImporter {
                 partitionFromDB = partitionByLetter[letter.lowercase()]
             }
 
-            val sizeTB = bytesToTB(cand.sizeBytes)
-            val usedTB = cand.usedTB
+            val sizeMB = bytesToMB(cand.sizeBytes)
+            val usedMB = cand.usedMB
             val fsType = cand.fsType
             val label = cand.label
 
@@ -229,12 +229,11 @@ object OshiImporter {
                     this.name = label.ifBlank { if (letter.isNotEmpty()) "$letter" else "Unknown" }
                     this.letter = letter
                     this.type = "Partition"
-                    this.sizeTB = sizeTB
-                    this.usedTB = usedTB
+                    this.sizeMB = sizeMB
+                    this.usedMB = usedMB
                     this.uuid = cand.uuid
                     this.fsType = fsType
                     this.tags = ""
-                    // Mark as virtual if there is no hardware disk backing
                     this.virtual = cand.diskStore == null
                 }
                 val pid = DiskRepository.insertPartition(newPartition)
@@ -251,11 +250,11 @@ object OshiImporter {
                 if (partitionFromDB.name != label && label.isNotEmpty()) {
                     partitionFromDB.name = label; changed = true
                 }
-                if (partitionFromDB.sizeTB != sizeTB && sizeTB > 0) {
-                    partitionFromDB.sizeTB = sizeTB; changed = true
+                if (partitionFromDB.sizeMB != sizeMB && sizeMB > 0) {
+                    partitionFromDB.sizeMB = sizeMB; changed = true
                 }
-                if (usedTB >= 0.0 && abs(partitionFromDB.usedTB - usedTB) > 0.0001) {
-                    partitionFromDB.usedTB = usedTB; changed = true
+                if (usedMB >= 0.0 && abs(partitionFromDB.usedMB - usedMB) > 0.0001) {
+                    partitionFromDB.usedMB = usedMB; changed = true
                 }
                 if (partitionFromDB.uuid.isBlank() && cand.uuid.isNotEmpty()) {
                     partitionFromDB.uuid = cand.uuid; changed = true
@@ -290,18 +289,13 @@ object OshiImporter {
      *
      * Output: `MG09ACA18TE`
      */
-    private fun parseModel(model: String, manufacturer: String): String{
+    private fun parseModel(model: String, manufacturer: String): String {
         val modelWithoutInfo = model.substringBefore("(").trim()
         return if (manufacturer.isEmpty()) {
             modelWithoutInfo
         } else {
             modelWithoutInfo.replace(manufacturer, "", ignoreCase = true).trim()
         }
-    }
-
-    private fun bytesToTB(bytes: Long): Double {
-        if (bytes <= 0) return 0.0
-        return bytes.toDouble() / (1024.0 * 1024.0 * 1024.0 * 1024.0)
     }
 
     private fun guessManufacturer(model: String): String {
@@ -330,5 +324,10 @@ object OshiImporter {
         // Example: "C:\\" → "C"
         val trimmed = mount.trim()
         return trimmed.substringBefore(":").uppercase().takeIf { it.length == 1 } ?: ""
+    }
+
+    private fun bytesToMB(bytes: Long): Double {
+        if (bytes <= 0) return 0.0
+        return bytes.toDouble() / (1024.0 * 1024.0)
     }
 }

@@ -1,11 +1,12 @@
 package de.tfr.tool.ui
 
-import de.tfr.tool.de.tfr.tool.ui.util.DialogHelper
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
+import de.tfr.tool.model.formatSize
 import de.tfr.tool.model.percentOf
-import de.tfr.tool.model.toTBString
 import de.tfr.tool.persist.DiskRepository
+import de.tfr.tool.ui.util.DialogHelper
 import javafx.beans.property.BooleanProperty
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleObjectProperty
@@ -205,8 +206,8 @@ class TabTable(
             prefWidth = 100.0
             setCellValueFactory { data ->
                 when (val v = data.value.value) {
-                    is Disk -> SimpleStringProperty(v.sizeTB.toTBString())
-                    is Partition -> SimpleStringProperty(v.sizeTB.toTBString())
+                    is Disk -> SimpleStringProperty(v.sizeMB.formatSize())
+                    is Partition -> SimpleStringProperty(v.sizeMB.formatSize())
                     else -> SimpleStringProperty("")
                 }
             }
@@ -231,8 +232,8 @@ class TabTable(
             prefWidth = 100.0
             setCellValueFactory { data ->
                 when (val v = data.value.value) {
-                    is Disk -> SimpleStringProperty(v.usedTB.toTBString())
-                    is Partition -> SimpleStringProperty(v.usedTB.toTBString())
+                    is Disk -> SimpleStringProperty(v.usedMB.formatSize())
+                    is Partition -> SimpleStringProperty(v.usedMB.formatSize())
                     else -> SimpleStringProperty("")
                 }
             }
@@ -255,11 +256,11 @@ class TabTable(
             prefWidth = 100.0
             setCellValueFactory { data ->
                 val free = when (val v = data.value.value) {
-                    is Disk -> (v.sizeTB - v.usedTB).coerceAtLeast(0.0)
-                    is Partition -> (v.sizeTB - v.usedTB).coerceAtLeast(0.0)
+                    is Disk -> (v.sizeMB - v.usedMB).coerceAtLeast(0.0)
+                    is Partition -> (v.sizeMB - v.usedMB).coerceAtLeast(0.0)
                     else -> 0.0
                 }
-                SimpleStringProperty(free.toTBString())
+                SimpleStringProperty(free.formatSize())
             }
         }
 
@@ -427,11 +428,16 @@ class TabTable(
                         when (val rowObj = tableRow?.item) {
                             is Partition -> {
                                 val disk = tableRow.treeItem?.parent?.value as? Disk
-                                val total = disk?.sizeTB ?: 0.0
+                                val total = disk?.sizeMB ?: 0.0
                                 val tipTxt = if (total > 0.0) {
-                                    val part = rowObj.sizeTB.coerceAtLeast(0.0)
+                                    val part = rowObj.sizeMB.coerceAtLeast(0.0)
                                     val pct = (part / total) * 100.0
-                                    I18n.s("fmt.partOfDisk", rowObj.sizeTB.toTBString(), total.toTBString(), String.format("%.1f", pct))
+                                    I18n.s(
+                                        "fmt.partOfDisk",
+                                        rowObj.sizeMB.formatSize(),
+                                        total.formatSize(),
+                                        String.format("%.1f", pct)
+                                    )
                                 } else {
                                     I18n.s("fmt.percentOne", String.format("%.1f", pctValue * 100))
                                 }
@@ -439,11 +445,16 @@ class TabTable(
                                 tooltip = tip
                             }
                             is Disk -> {
-                                val totalAll = currentDisks.sumOf { it.sizeTB.coerceAtLeast(0.0) }
+                                val totalAll = currentDisks.sumOf { it.sizeMB.coerceAtLeast(0.0) }
                                 val tipTxt = if (totalAll > 0.0) {
-                                    val part = rowObj.sizeTB.coerceAtLeast(0.0)
+                                    val part = rowObj.sizeMB.coerceAtLeast(0.0)
                                     val pct = (part / totalAll) * 100.0
-                                    I18n.s("fmt.partOfDisk", rowObj.sizeTB.toTBString(), totalAll.toTBString(), String.format("%.1f", pct))
+                                    I18n.s(
+                                        "fmt.partOfDisk",
+                                        rowObj.sizeMB.formatSize(),
+                                        totalAll.formatSize(),
+                                        String.format("%.1f", pct)
+                                    )
                                 } else {
                                     I18n.s("fmt.percentOne", String.format("%.1f", pctValue * 100))
                                 }

@@ -1,6 +1,10 @@
 package de.tfr.tool.ui
 
-import de.tfr.tool.model.*
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
+import de.tfr.tool.model.Disk
+import de.tfr.tool.model.Partition
+import de.tfr.tool.model.formatSize
+import de.tfr.tool.model.percentOf
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.Label
@@ -17,7 +21,7 @@ import javafx.scene.shape.Rectangle
 class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
     private val outer = VBox(8.0)
     private val card = VBox(12.0)
-    
+
     // UI references
     private lateinit var nameLabel: Label
     private lateinit var sizeLabel: Label
@@ -49,7 +53,7 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         nameLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333333;"
 
         // Size
-        sizeLabel = Label(partition.sizeTB.toTBString())
+        sizeLabel = Label(partition.sizeMB.formatSize())
         sizeLabel.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
 
         val headerRow = HBox(8.0)
@@ -68,8 +72,8 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         card.children += diskNameLabel
 
         // Used/Free info
-        val free = (partition.sizeTB - partition.usedTB).coerceAtLeast(0.0)
-        usedLabel = Label("${partition.usedTB.toNumberString()} / ${free.toTBString()}")
+        val free = (partition.sizeMB - partition.usedMB).coerceAtLeast(0.0)
+        usedLabel = Label("${partition.usedMB.formatSize()} / ${free.formatSize()}")
         usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #555;"
         VBox.setMargin(usedLabel, Insets(0.0, 0.0, -12.0, 0.0))
         card.children += usedLabel
@@ -87,7 +91,7 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         barBg.isManaged = false
         barFill.isManaged = false
         barBg.widthProperty().bind(bar.widthProperty().subtract(20))
-        barFill.widthProperty().bind(barBg.widthProperty().multiply(partition.usedTB.percentOf(partition.sizeTB)))
+        barFill.widthProperty().bind(barBg.widthProperty().multiply(partition.usedMB.percentOf(partition.sizeMB)))
 
         bar.children.addAll(barBg, barFill)
         VBox.setMargin(bar, Insets(0.0, 0.0, 0.0, 0.0))
@@ -99,26 +103,25 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         card.children += spacer
 
         // Footer: Type, Tags, Icons
-        val footer = VBox(4.0)
+        val footer = HBox(8.0).apply { alignment = Pos.CENTER_LEFT }
 
-        if (partition.tags.isNotBlank()) {
-            val tagsLabel = Label("${I18n.s("col.tags")}: ${partition.tags}")
-            tagsLabel.style = "-fx-font-size: 11px; -fx-text-fill: #666;"
-            footer.children += tagsLabel
-        }
+        val typeLabel = Label(partition.type)
+        typeLabel.style = "-fx-font-size: 11px; -fx-text-fill: #888;"
+        footer.children += typeLabel
 
-        // Icons row for encryption, cloud backup and virtual flag
-        val iconsRow = HBox(8.0)
-        iconsRow.alignment = Pos.CENTER_LEFT
+        val tagsLabel = Label(if (partition.tags.isNotBlank()) partition.tags else I18n.s("stats.byTag.fallback"))
+        tagsLabel.style = "-fx-font-size: 11px; -fx-text-fill: #999;"
+        footer.children += tagsLabel
 
-        // Lock icon for encryption
-        val lockUrl = javaClass.getResource("/encrypted.png")?.toExternalForm()
-        if (lockUrl != null) {
-            val isEncrypted = try { partition.encrypted } catch (_: Exception) { partition.type == PartitionType.EncryptedContainer.name }
-            if (isEncrypted) {
-                val lockIcon = svgIcon(lockUrl, 16.0, 16.0)
-                iconsRow.children += lockIcon
-            }
+        val iconsRow = HBox(4.0)
+        iconsRow.alignment = Pos.CENTER_RIGHT
+        HBox.setHgrow(iconsRow, Priority.ALWAYS)
+
+        // Encrypted icon
+        val encryptedUrl = javaClass.getResource("/encrypted.png")?.toExternalForm()
+        if (encryptedUrl != null && partition.encrypted) {
+            val encryptedIcon = svgIcon(encryptedUrl, 16.0, 16.0)
+            iconsRow.children += encryptedIcon
         }
 
         // Cloud backup icon
@@ -169,23 +172,25 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
             nameLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #e8e8e8;"
             sizeLabel.style = "-fx-font-size: 14px; -fx-text-fill: #d0d0d0;"
             diskNameLabel.style = "-fx-font-size: 12px; -fx-text-fill: #c0c0c0;"
-            usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #c8c8c8;"
-            barBg.fill = Color.web("#5a5e60")
-            barFill.fill = Color.web("#4aa3ff")
+            usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #b0b0b0;"
         } else {
             card.background = Background(BackgroundFill(Color.rgb(255, 250, 229), CornerRadii(10.0), Insets.EMPTY))
-            card.border = Border(BorderStroke(Color.rgb(234, 210, 140), BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(1.0)))
+            card.border = Border(
+                BorderStroke(
+                    Color.rgb(234, 210, 140),
+                    BorderStrokeStyle.SOLID,
+                    CornerRadii(10.0),
+                    BorderWidths(2.0)
+                )
+            )
             nameLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333333;"
             sizeLabel.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
             diskNameLabel.style = "-fx-font-size: 12px; -fx-text-fill: #666;"
             usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #555;"
-            barBg.fill = Color.web("#ffd08a")
-            barFill.fill = Color.web("#f59e42")
         }
     }
 
-    fun applyFixedHeight(heightPx: Double) {
-        val h = heightPx.coerceAtLeast(50.0)
+    fun setEqualHeight(h: Double) {
         minHeight = h
         prefHeight = h
         maxHeight = h
@@ -196,6 +201,8 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         card.prefHeight = h - 16.0
         card.maxHeight = h - 16.0
     }
+
+    fun applyFixedHeight(h: Double) = setEqualHeight(h)
 
     fun resetHeightConstraints() {
         minHeight = USE_COMPUTED_SIZE
@@ -210,6 +217,13 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
     }
 
     fun setCardGrowEnabled(enabled: Boolean) {
-        VBox.setVgrow(card, if (enabled) Priority.ALWAYS else Priority.NEVER)
+        if (enabled) {
+            VBox.setVgrow(this, Priority.ALWAYS)
+            VBox.setVgrow(card, Priority.ALWAYS)
+        } else {
+            VBox.setVgrow(this, null)
+            VBox.setVgrow(card, null)
+        }
     }
 }
+

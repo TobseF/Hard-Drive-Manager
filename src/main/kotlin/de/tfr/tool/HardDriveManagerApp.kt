@@ -1,9 +1,9 @@
 package de.tfr.tool
 
-import de.tfr.tool.de.tfr.tool.persist.Settings
+import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.persist.Database
 import de.tfr.tool.persist.DiskRepository
-import de.tfr.tool.ui.I18n
+import de.tfr.tool.persist.Settings
 import de.tfr.tool.ui.MainView
 import javafx.application.Application
 import javafx.scene.Scene

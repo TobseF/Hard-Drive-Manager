@@ -1,6 +1,6 @@
-package de.tfr.tool.de.tfr.tool.ui.util
+package de.tfr.tool.ui.util
 
-import de.tfr.tool.de.tfr.tool.ui.ThemeHelper
+import de.tfr.tool.de.tfr.tool.ui.util.ThemeHelper
 import javafx.application.Platform
 import javafx.scene.Node
 import javafx.scene.control.Dialog

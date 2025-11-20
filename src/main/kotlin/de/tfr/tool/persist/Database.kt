@@ -26,7 +26,7 @@ object Database {
             CREATE TABLE IF NOT EXISTS disks (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               name TEXT NOT NULL,
-              size_tb REAL NOT NULL DEFAULT 0,
+              size_mb REAL NOT NULL DEFAULT 0,
               type TEXT NOT NULL,
               model TEXT NOT NULL DEFAULT '',
               tag TEXT NOT NULL DEFAULT ''
@@ -40,8 +40,8 @@ object Database {
               name TEXT NOT NULL,
               letter TEXT NOT NULL DEFAULT '',
               type TEXT NOT NULL,
-              size_tb REAL NOT NULL DEFAULT 0,
-              used_tb REAL NOT NULL DEFAULT 0,
+              size_mb REAL NOT NULL DEFAULT 0,
+              used_mb REAL NOT NULL DEFAULT 0,
               tags TEXT NOT NULL DEFAULT '',
               FOREIGN KEY(disk_id) REFERENCES disks(id) ON DELETE CASCADE
             );
@@ -52,9 +52,10 @@ object Database {
             st.execute(sqlPartitions)
         }
 
-        // Migration: add missing columns
+        // Migration: add missing columns and convert old TB columns to MB
         ensureDiskColumns()
         ensurePartitionColumns()
+        migrateTBtoMB()
     }
 
     /**
@@ -159,6 +160,66 @@ object Database {
         if (!existing.contains("hidden")) {
             conn.createStatement().use { st ->
                 st.execute("ALTER TABLE disks ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+    }
+
+    /**
+     * Migrates old size_tb/used_tb columns to size_mb/used_mb (multiply by 1024).
+     * Only performs migration if the old columns exist and new ones don't.
+     */
+    private fun migrateTBtoMB() {
+        val conn = connection()
+
+        // Check if old columns exist and new ones don't
+        var diskHasOldColumn = false
+        var diskHasNewColumn = false
+        var partHasOldColumns = false
+        var partHasNewColumns = false
+
+        conn.createStatement().use { st ->
+            val rs = st.executeQuery("PRAGMA table_info(disks)")
+            while (rs.next()) {
+                val colName = rs.getString("name").lowercase()
+                if (colName == "size_tb") diskHasOldColumn = true
+                if (colName == "size_mb") diskHasNewColumn = true
+            }
+        }
+
+        conn.createStatement().use { st ->
+            val rs = st.executeQuery("PRAGMA table_info(partitions)")
+            while (rs.next()) {
+                val colName = rs.getString("name").lowercase()
+                if (colName == "size_tb" || colName == "used_tb") partHasOldColumns = true
+                if (colName == "size_mb" || colName == "used_mb") partHasNewColumns = true
+            }
+        }
+
+        // Migration: rename old columns to new and multiply values by 1024
+        if (diskHasOldColumn && !diskHasNewColumn) {
+            try {
+                conn.createStatement().use { st ->
+                    // Rename size_tb to size_mb and multiply by 1024
+                    st.execute("ALTER TABLE disks RENAME COLUMN size_tb TO size_mb")
+                    st.execute("UPDATE disks SET size_mb = size_mb * 1024.0")
+                }
+            } catch (ex: Exception) {
+                // Column might already be renamed
+            }
+        }
+
+        if (partHasOldColumns && !partHasNewColumns) {
+            try {
+                conn.createStatement().use { st ->
+                    // Rename size_tb to size_mb and multiply by 1024
+                    st.execute("ALTER TABLE partitions RENAME COLUMN size_tb TO size_mb")
+                    st.execute("UPDATE partitions SET size_mb = size_mb * 1024.0")
+                    // Rename used_tb to used_mb and multiply by 1024
+                    st.execute("ALTER TABLE partitions RENAME COLUMN used_tb TO used_mb")
+                    st.execute("UPDATE partitions SET used_mb = used_mb * 1024.0")
+                }
+            } catch (ex: Exception) {
+                // Columns might already be renamed
             }
         }
     }

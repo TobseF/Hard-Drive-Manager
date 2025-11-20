@@ -1,6 +1,7 @@
-package de.tfr.tool.de.tfr.tool.persist
+package de.tfr.tool.persist
 
-import de.tfr.tool.ui.Language
+import de.tfr.tool.de.tfr.tool.ui.i18n.Language
+import de.tfr.tool.model.DisplayUnit
 import de.tfr.tool.ui.Theme
 import java.util.prefs.Preferences
 import kotlin.reflect.KProperty
@@ -20,6 +21,7 @@ object Settings {
     var fixedCardHeightPx by DoubleProp("fixedCardHeightPx", 220.0)
     var theme by EnumProp("theme", Theme::fromString, Theme.LIGHT)
     var language by EnumProp("language", Language::fromString, Language.DE)
+    var displayUnit by EnumProp("displayUnit", DisplayUnit::fromString, DisplayUnit.TB)
     var dbPath by StringProp("db.path", trim = true)
 
     object Table {
