@@ -113,4 +113,5 @@ object SampleDataRepository {
 }
 
 fun Double.toTBString(): String = if (this >= 1) String.format("%.0f TB", this) else String.format("%.1f TB", this)
+fun Double.toNumberString(): String = if (this >= 1) String.format("%.0f", this) else String.format("%.1f", this)
 fun Double.percentOf(total: Double): Double = if (total <= 0.0) 0.0 else (this / total).coerceIn(0.0, 1.0)

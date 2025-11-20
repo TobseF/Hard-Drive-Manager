@@ -69,8 +69,9 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
 
         // Used/Free info
         val free = (partition.sizeTB - partition.usedTB).coerceAtLeast(0.0)
-        usedLabel = Label("${I18n.s("col.used")}: ${partition.usedTB.toTBString()} / ${I18n.s("col.free")}: ${free.toTBString()}")
+        usedLabel = Label("${partition.usedTB.toNumberString()} / ${free.toTBString()}")
         usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #555;"
+        VBox.setMargin(usedLabel, Insets(0.0, 0.0, -12.0, 0.0))
         card.children += usedLabel
 
         // Usage bar
@@ -89,7 +90,7 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         barFill.widthProperty().bind(barBg.widthProperty().multiply(partition.usedTB.percentOf(partition.sizeTB)))
 
         bar.children.addAll(barBg, barFill)
-        VBox.setMargin(bar, Insets(8.0, 0.0, 0.0, 0.0))
+        VBox.setMargin(bar, Insets(0.0, 0.0, 0.0, 0.0))
         card.children += bar
 
         // Spacer
@@ -99,10 +100,6 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
 
         // Footer: Type, Tags, Icons
         val footer = VBox(4.0)
-        
-        val typeLabel = Label(partition.type)
-        typeLabel.style = "-fx-font-size: 12px; -fx-text-fill: #555;"
-        footer.children += typeLabel
 
         if (partition.tags.isNotBlank()) {
             val tagsLabel = Label("${I18n.s("col.tags")}: ${partition.tags}")
