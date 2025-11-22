@@ -17,6 +17,7 @@ import javafx.scene.layout.VBox
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import mu.KotlinLogging
+import org.kordamp.ikonli.feather.Feather
 
 data class AppSettings(
     val equalCardHeights: Boolean,
@@ -41,6 +42,7 @@ object SettingsDialog {
 
     fun show(current: AppSettings): SettingsResult {
         val dialog = Dialog<ButtonType>()
+        val currentTheme = ThemeManager.currentTheme
         dialog.title = I18n.s("settings.title")
         dialog.headerText = null
         DialogHelper.setWindowIcon(dialog.dialogPane, "settings.png")
@@ -111,7 +113,9 @@ object SettingsDialog {
             pathField.isEditable = false
             pathField.prefColumnCount = 18
 
-            val btnBrowse = Button(I18n.s("settings.db.browse"))
+            val btnBrowse = Button()
+            btnBrowse.tooltip = Tooltip(I18n.s("settings.db.browse"))
+            btnBrowse.graphic = currentTheme.createIcon(Feather.FOLDER)
             btnBrowse.setOnAction {
                 val chooser = FileChooser()
                 chooser.title = I18n.s("settings.db.browse")
@@ -123,7 +127,9 @@ object SettingsDialog {
                 if (file != null) pathField.text = file.absolutePath
             }
 
-            val btnClear = Button(I18n.s("settings.db.clear"))
+            val btnClear = Button()
+            btnClear.graphic = currentTheme.createIcon(Feather.TRASH_2)
+            btnClear.tooltip = Tooltip(I18n.s("settings.db.clear"))
             btnClear.setOnAction {
                 val alert = Alert(Alert.AlertType.CONFIRMATION)
                 alert.title = I18n.s("alert.db.clear.confirm.title")
@@ -134,7 +140,7 @@ object SettingsDialog {
                 val cancelClearButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
                 alert.buttonTypes.setAll(confirmButtonType, cancelClearButtonType)
 
-                val resClear = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
+                val resClear = DialogHelper.showDialog(alert, currentTheme == Theme.DARK)
                 if (resClear.isPresent && resClear.get() == confirmButtonType) {
                     val dbPathStr = try { Database.getCurrentDbPath().toString() } catch (_: Exception) { "<unknown>" }
                     logger.info { "User confirmed clearing database at path: $dbPathStr" }
@@ -144,13 +150,13 @@ object SettingsDialog {
                         dbClearedFlag = true
                         DialogHelper.showDialog(
                             Alert(Alert.AlertType.INFORMATION, I18n.s("alert.db.clear.success", disksDeleted, partsDeleted)),
-                            ThemeManager.currentTheme == Theme.DARK
+                            currentTheme == Theme.DARK
                         )
                     } catch (ex: Exception) {
                         logger.error(ex) { "Error while clearing database" }
                         DialogHelper.showDialog(
                             Alert(Alert.AlertType.ERROR, I18n.s("alert.db.clear.error", ex.message ?: "")),
-                            ThemeManager.currentTheme == Theme.DARK
+                            currentTheme == Theme.DARK
                         )
                     }
                 }
@@ -247,4 +253,3 @@ object SettingsDialog {
         return SettingsResult(true, newSettings, dbChanged, dbClearedFlag)
     }
 }
-

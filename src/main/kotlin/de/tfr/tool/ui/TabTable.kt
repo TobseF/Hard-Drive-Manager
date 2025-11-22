@@ -19,6 +19,7 @@ import javafx.scene.control.cell.CheckBoxTreeTableCell
 import javafx.scene.control.cell.TextFieldTreeTableCell
 import javafx.scene.layout.*
 import mu.KotlinLogging
+import org.kordamp.ikonli.materialdesign2.MaterialDesignU
 
 /**
  * Encapsulates all table UI and logic previously mixed into MainView.
@@ -110,10 +111,12 @@ class TabTable(
         delBtn.text = I18n.s("btn.delete")
         delBtn.setOnAction { onDeleteSelected() }
 
-        expandAllBtn.text = I18n.s("btn.expand.all")
+        expandAllBtn.tooltip = Tooltip(I18n.s("btn.expand.all"))
+        expandAllBtn.graphic = ThemeManager.currentTheme.createIcon(MaterialDesignU.UNFOLD_MORE_HORIZONTAL)
         expandAllBtn.setOnAction { expandAll() }
 
-        collapseAllBtn.text = I18n.s("btn.collapse.all")
+        collapseAllBtn.tooltip = Tooltip(I18n.s("btn.collapse.all"))
+        collapseAllBtn.graphic = ThemeManager.currentTheme.createIcon(MaterialDesignU.UNFOLD_LESS_HORIZONTAL)
         collapseAllBtn.setOnAction { collapseAll() }
 
         toggleHidden.selectedProperty().bindBidirectional(showHiddenProp)
@@ -673,8 +676,8 @@ class TabTable(
         addDiskBtn.text = I18n.s("btn.add.disk")
         addPartBtn.text = I18n.s("btn.add.partition")
         delBtn.text = I18n.s("btn.delete")
-        expandAllBtn.text = I18n.s("btn.expand.all")
-        collapseAllBtn.text = I18n.s("btn.collapse.all")
+        expandAllBtn.tooltip = Tooltip(I18n.s("btn.expand.all"))
+        collapseAllBtn.tooltip = Tooltip(I18n.s("btn.collapse.all"))
         toggleHidden.text = if (toggleHidden.isSelected) I18n.s("btn.hideHidden") else I18n.s("btn.showHidden")
         toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
 

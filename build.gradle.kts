@@ -25,6 +25,10 @@ dependencies {
     implementation("net.yetihafen:javafx-customcaption:1.0.1")
     // AtlantaFX theme library
     implementation("io.github.mkpaz:atlantafx-base:2.0.1")
+    // Icons
+    implementation("org.kordamp.ikonli:ikonli-javafx:12.4.0")
+    implementation("org.kordamp.ikonli:ikonli-feather-pack:12.4.0")
+    implementation("org.kordamp.ikonli:ikonli-materialdesign2-pack:12.4.0")
 
     testImplementation(kotlin("test"))
 }
