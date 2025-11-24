@@ -18,6 +18,7 @@ import javafx.scene.control.*
 import javafx.scene.control.cell.CheckBoxTreeTableCell
 import javafx.scene.control.cell.TextFieldTreeTableCell
 import javafx.scene.layout.*
+import javafx.util.StringConverter
 import mu.KotlinLogging
 import org.kordamp.ikonli.materialdesign2.MaterialDesignU
 
@@ -901,14 +902,15 @@ class TabTable(
         // Create disk selection combo box
         val diskCombo = ComboBox<Disk>()
         diskCombo.items.setAll(allDisks)
-        diskCombo.converter = object : javafx.util.StringConverter<Disk>() {
+        diskCombo.converter = object : StringConverter<Disk>() {
             override fun toString(disk: Disk?): String {
                 if (disk == null) return ""
                 val partitionNames = disk.partitions.joinToString(", ") { it.name }
+                val size = disk.sizeMB.formatSize()
                 return if (partitionNames.isNotEmpty()) {
-                    "${disk.name} ($partitionNames)"
+                    "${disk.name} - $size ($partitionNames)"
                 } else {
-                    disk.name
+                    disk.name + " - " + size
                 }
             }
 
