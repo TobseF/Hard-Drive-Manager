@@ -2,6 +2,7 @@ package de.tfr.tool.persist
 
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
+import de.tfr.tool.persist.OshiImporter.bytesToMB
 import oshi.SystemInfo
 import oshi.hardware.HWDiskStore
 import java.util.concurrent.atomic.AtomicInteger
@@ -58,17 +59,7 @@ object OshiImporter {
         // Disk stores from hardware layer
         val hwDiskStores = hardwareAbstractionLayer.diskStores
 
-        // Candidate structure for partition-first processing
-        data class PartitionCandidate(
-            val uuid: String,
-            val mountRaw: String,
-            val sizeBytes: Long,
-            val diskStore: HWDiskStore?,
-            var usedMB: Double = 0.0,
-            var label: String = "",
-            var mountPoint: String = "",
-            var fsType: String = ""
-        )
+
 
         val partitionCandidates = mutableListOf<PartitionCandidate>()
 
@@ -145,10 +136,10 @@ object OshiImporter {
         }
 
         // 3. For each partition candidate resolve/create its disk, then merge partition
-        partitionCandidates.forEach { cand ->
+        partitionCandidates.forEach { partitionCandidate ->
             // Resolve disk
-            val disk: Disk = if (cand.diskStore != null) {
-                val diskStore = cand.diskStore
+            val disk: Disk = if (partitionCandidate.diskStore != null) {
+                val diskStore = partitionCandidate.diskStore
                 val serial = (diskStore.serial ?: "").trim()
                 val modelSystemInfo = (diskStore.model ?: "").trim()
                 val manufacturer = guessManufacturer(modelSystemInfo)
@@ -156,13 +147,13 @@ object OshiImporter {
                 val sizeMB = bytesToMB(diskStore.size)
                 val type = guessType(model)
                 val keySerial = serial.lowercase()
-                var d: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
-                if (d == null) {
-                    d = disksByModelSize[model.lowercase() + "|" + sizeMB.toString()]
+                var diskFromDB: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
+                if (diskFromDB == null) {
+                    diskFromDB = disksByModelSize[model.lowercase() + "|" + sizeMB.toString()]
                 }
                 val generatedDriveName = listOf(manufacturer, type).filter { it.isNotBlank() }.joinToString(" ")
                     .ifBlank { model.ifBlank { serial }.ifBlank { "Disk" } }
-                if (d == null) {
+                if (diskFromDB == null) {
                     val newDisk = Disk().apply {
                         name = generatedDriveName
                         this.model = model
@@ -181,28 +172,28 @@ object OshiImporter {
                     newDisk
                 } else {
                     var changed = false
-                    if (d.sizeMB != sizeMB && sizeMB > 0) {
-                        d.sizeMB = sizeMB; changed = true
+                    if (diskFromDB.sizeMB != sizeMB && sizeMB > 0) {
+                        diskFromDB.sizeMB = sizeMB; changed = true
                     }
-                    if (d.model.isBlank() && model.isNotEmpty()) {
-                        d.model = model; changed = true
+                    if (diskFromDB.model.isBlank() && model.isNotEmpty()) {
+                        diskFromDB.model = model; changed = true
                     }
-                    if (d.manufacturer.isBlank() && manufacturer.isNotEmpty()) {
-                        d.manufacturer = manufacturer; changed = true
+                    if (diskFromDB.manufacturer.isBlank() && manufacturer.isNotEmpty()) {
+                        diskFromDB.manufacturer = manufacturer; changed = true
                     }
-                    if (d.serial.isBlank() && serial.isNotEmpty()) {
-                        d.serial = serial; changed = true
+                    if (diskFromDB.serial.isBlank() && serial.isNotEmpty()) {
+                        diskFromDB.serial = serial; changed = true
                     }
-                    if (d.type.isBlank() && type.isNotEmpty()) {
-                        d.type = type; changed = true
+                    if (diskFromDB.type.isBlank() && type.isNotEmpty()) {
+                        diskFromDB.type = type; changed = true
                     }
-                    if (d.name.isBlank()) {
-                        d.name = generatedDriveName; changed = true
+                    if (diskFromDB.name.isBlank()) {
+                        diskFromDB.name = generatedDriveName; changed = true
                     }
                     if (changed) {
-                        DiskRepository.updateDisk(d); disksUpdated.incrementAndGet()
+                        DiskRepository.updateDisk(diskFromDB); disksUpdated.incrementAndGet()
                     }
-                    d
+                    diskFromDB
                 }
             } else {
                 // No disk info -> use Unknown Disk placeholder
@@ -210,20 +201,20 @@ object OshiImporter {
             }
 
             // Partition merge/create
-            val uuidKey = cand.uuid.trim().lowercase()
-            val mountPoint = cand.mountPoint.ifBlank { cand.mountRaw }
+            val uuidKey = partitionCandidate.uuid.trim().lowercase()
+            val mountPoint = partitionCandidate.mountPoint.ifBlank { partitionCandidate.mountRaw }
             val letter = extractWindowsLetter(mountPoint)
             var partitionFromDB: Partition? = if (uuidKey.isNotEmpty()) partitionByUuid[uuidKey] else null
             if (partitionFromDB == null && letter.isNotEmpty()) {
                 partitionFromDB = partitionByLetter[letter.lowercase()]
             }
 
-            val sizeMB = bytesToMB(cand.sizeBytes)
-            val usedMB = cand.usedMB
-            val fsType = cand.fsType
-            val label = cand.label
 
             if (partitionFromDB == null) {
+                val sizeMB = bytesToMB(partitionCandidate.sizeBytes)
+                val usedMB = partitionCandidate.usedMB
+                val fsType = partitionCandidate.fsType
+                val label = partitionCandidate.label
                 val newPartition = Partition().apply {
                     this.diskId = disk.id
                     this.name = label.ifBlank { if (letter.isNotEmpty()) "$letter" else "Unknown" }
@@ -231,56 +222,44 @@ object OshiImporter {
                     this.type = "Partition"
                     this.sizeMB = sizeMB
                     this.usedMB = usedMB
-                    this.uuid = cand.uuid
+                    this.uuid = partitionCandidate.uuid
                     this.fsType = fsType
                     this.tags = ""
-                    this.virtual = cand.diskStore == null
+                    this.virtual = partitionCandidate.diskStore == null
                 }
                 val pid = DiskRepository.insertPartition(newPartition)
                 newPartition.id = pid
                 disk.partitions += newPartition
-                if (cand.uuid.isNotBlank()) partitionByUuid[cand.uuid.lowercase()] = newPartition
+                if (partitionCandidate.uuid.isNotBlank()) partitionByUuid[partitionCandidate.uuid.lowercase()] =
+                    newPartition
                 if (newPartition.letter.isNotBlank()) partitionByLetter[newPartition.letter.lowercase()] = newPartition
                 partitionsInserted.incrementAndGet()
             } else {
-                var changed = false
-                if (partitionFromDB.diskId != disk.id) {
-                    partitionFromDB.diskId = disk.id; changed = true
-                }
-                if (partitionFromDB.name != label && label.isNotEmpty()) {
-                    partitionFromDB.name = label; changed = true
-                }
-                if (partitionFromDB.sizeMB != sizeMB && sizeMB > 0) {
-                    partitionFromDB.sizeMB = sizeMB; changed = true
-                }
-                if (usedMB >= 0.0 && abs(partitionFromDB.usedMB - usedMB) > 0.0001) {
-                    partitionFromDB.usedMB = usedMB; changed = true
-                }
-                if (partitionFromDB.uuid.isBlank() && cand.uuid.isNotEmpty()) {
-                    partitionFromDB.uuid = cand.uuid; changed = true
-                }
-                if (partitionFromDB.letter.isBlank() && letter.isNotEmpty()) {
-                    partitionFromDB.letter = letter; changed = true
-                }
-                if (partitionFromDB.fsType.isBlank() && fsType.isNotEmpty()) {
-                    partitionFromDB.fsType = fsType; changed = true
-                }
-                if (changed) {
-                    DiskRepository.updatePartition(partitionFromDB); partitionsUpdated.incrementAndGet()
-                }
-                if (partitionFromDB.virtual && cand.diskStore != null) {
-                    // If previously virtual but now we have hardware info, clear virtual flag
-                    partitionFromDB.virtual = false; changed = true
-                }
-                if (!partitionFromDB.virtual && cand.diskStore == null) {
-                    // Partition lost hardware backing – set virtual
-                    partitionFromDB.virtual = true; changed = true
-                }
+                partitionFromDB.applyPartition(
+                    disk,
+                    partitionCandidate,
+                    letter,
+                    partitionsUpdated
+                )
             }
         }
 
+
+
         return Result(disksUpdated.get(), disksInserted.get(), partitionsUpdated.get(), partitionsInserted.get())
     }
+
+    // Candidate structure for partition-first processing
+    data class PartitionCandidate(
+        val uuid: String,
+        val mountRaw: String,
+        val sizeBytes: Long,
+        val diskStore: HWDiskStore?,
+        var usedMB: Double = 0.0,
+        var label: String = "",
+        var mountPoint: String = "",
+        var fsType: String = ""
+    )
 
     /**
      * Reads the model name out of the localized system model info.
@@ -326,8 +305,56 @@ object OshiImporter {
         return trimmed.substringBefore(":").uppercase().takeIf { it.length == 1 } ?: ""
     }
 
-    private fun bytesToMB(bytes: Long): Double {
+    fun bytesToMB(bytes: Long): Double {
         if (bytes <= 0) return 0.0
         return bytes.toDouble() / (1024.0 * 1024.0)
+    }
+}
+
+private fun Partition.applyPartition(
+    disk: Disk,
+    partitionCandidate: OshiImporter.PartitionCandidate,
+    letter: String,
+    partitionsUpdated: AtomicInteger
+) {
+
+    var changed = false
+
+    val sizeMB = bytesToMB(partitionCandidate.sizeBytes)
+    val usedMB = partitionCandidate.usedMB
+    val fsType = partitionCandidate.fsType
+    val label = partitionCandidate.label
+
+    if (this.diskId != disk.id) {
+        this.diskId = disk.id; changed = true
+    }
+    if (this.name != label && label.isNotEmpty()) {
+        this.name = label; changed = true
+    }
+    if (this.sizeMB != sizeMB && sizeMB > 0) {
+        this.sizeMB = sizeMB; changed = true
+    }
+    if (usedMB >= 0.0 && abs(usedMB - usedMB) > 0.0001) {
+        this.usedMB = usedMB; changed = true
+    }
+    if (uuid.isBlank() && partitionCandidate.uuid.isNotEmpty()) {
+        uuid = partitionCandidate.uuid; changed = true
+    }
+    if (this.letter.isBlank() && letter.isNotEmpty()) {
+        this.letter = letter; changed = true
+    }
+    if (this.fsType.isBlank() && fsType.isNotEmpty()) {
+        this.fsType = fsType; changed = true
+    }
+    if (changed) {
+        DiskRepository.updatePartition(this); partitionsUpdated.incrementAndGet()
+    }
+    if (this.virtual && partitionCandidate.diskStore != null) {
+        // If previously virtual but now we have hardware info, clear virtual flag
+        this.virtual = false; changed = true
+    }
+    if (!this.virtual && partitionCandidate.diskStore == null) {
+        // Partition lost hardware backing – set virtual
+        this.virtual = true; changed = true
     }
 }
