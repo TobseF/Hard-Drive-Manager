@@ -135,11 +135,15 @@ object OshiImporter {
             return unknownDisk!!
         }
 
+        // Track which disk stores have been processed
+        val processedDiskStores = mutableSetOf<HWDiskStore>()
+
         // 3. For each partition candidate resolve/create its disk, then merge partition
         partitionCandidates.forEach { partitionCandidate ->
             // Resolve disk
             val disk: Disk = if (partitionCandidate.diskStore != null) {
                 val diskStore = partitionCandidate.diskStore
+                processedDiskStores += diskStore
                 val serial = (diskStore.serial ?: "").trim()
                 val modelSystemInfo = (diskStore.model ?: "").trim()
                 val manufacturer = guessManufacturer(modelSystemInfo)
@@ -244,7 +248,62 @@ object OshiImporter {
             }
         }
 
-
+        // 4. Process disks without partitions that haven't been processed yet
+        hwDiskStores.filterNot { it in processedDiskStores }.forEach { diskStore ->
+            val serial = (diskStore.serial ?: "").trim()
+            val modelSystemInfo = (diskStore.model ?: "").trim()
+            val manufacturer = guessManufacturer(modelSystemInfo)
+            val model = parseModel(modelSystemInfo, manufacturer)
+            val sizeMB = bytesToMB(diskStore.size)
+            val type = guessType(model)
+            val keySerial = serial.lowercase()
+            var diskFromDB: Disk? = if (keySerial.isNotEmpty()) diskBySerial[keySerial] else null
+            if (diskFromDB == null) {
+                diskFromDB = disksByModelSize[model.lowercase() + "|" + sizeMB.toString()]
+            }
+            val generatedDriveName = listOf(manufacturer, type).filter { it.isNotBlank() }.joinToString(" ")
+                .ifBlank { model.ifBlank { serial }.ifBlank { "Disk" } }
+            if (diskFromDB == null) {
+                val newDisk = Disk().apply {
+                    name = generatedDriveName
+                    this.model = model
+                    this.manufacturer = manufacturer
+                    this.serial = serial
+                    this.type = type
+                    this.sizeMB = sizeMB
+                    this.tag = ""
+                }
+                val newId = DiskRepository.insertDisk(newDisk)
+                newDisk.id = newId
+                existingDisks += newDisk
+                if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
+                disksByModelSize[model.lowercase() + "|" + sizeMB.toString()] = newDisk
+                disksInserted.incrementAndGet()
+            } else {
+                var changed = false
+                if (diskFromDB.sizeMB != sizeMB && sizeMB > 0) {
+                    diskFromDB.sizeMB = sizeMB; changed = true
+                }
+                if (diskFromDB.model.isBlank() && model.isNotEmpty()) {
+                    diskFromDB.model = model; changed = true
+                }
+                if (diskFromDB.manufacturer.isBlank() && manufacturer.isNotEmpty()) {
+                    diskFromDB.manufacturer = manufacturer; changed = true
+                }
+                if (diskFromDB.serial.isBlank() && serial.isNotEmpty()) {
+                    diskFromDB.serial = serial; changed = true
+                }
+                if (diskFromDB.type.isBlank() && type.isNotEmpty()) {
+                    diskFromDB.type = type; changed = true
+                }
+                if (diskFromDB.name.isBlank()) {
+                    diskFromDB.name = generatedDriveName; changed = true
+                }
+                if (changed) {
+                    DiskRepository.updateDisk(diskFromDB); disksUpdated.incrementAndGet()
+                }
+            }
+        }
 
         return Result(disksUpdated.get(), disksInserted.get(), partitionsUpdated.get(), partitionsInserted.get())
     }
