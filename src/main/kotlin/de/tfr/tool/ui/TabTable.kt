@@ -4,6 +4,7 @@ import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.*
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.persist.Settings
+import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.settings.ColumnVisibilityDialog
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.beans.property.BooleanProperty
@@ -1134,36 +1135,13 @@ class TabTable(
         moveMenuItem.text = I18n.s("menu.context.move")
         moveMenuItem.setOnAction { onMovePartition() }
 
-        // Add items to context menu
-        contextMenu.items.setAll(deleteMenuItem, moveMenuItem)
-
-        // Attach context menu to the tree table
         tree.setOnContextMenuRequested { event ->
-            val selectedItem = tree.selectionModel.selectedItem
-            if (selectedItem != null) {
-                val value = selectedItem.value
-                // Build context menu based on selected item type
-                if (value is Partition) {
-                    contextMenu.items.setAll(
-                        deleteMenuItem,
-                        moveMenuItem,
-                        SeparatorMenuItem(),
-                        createChangeMenu(value)
-                    )
-                } else if (value is Disk) {
-                    contextMenu.items.setAll(
-                        deleteMenuItem,
-                        SeparatorMenuItem(),
-                        createChangeMenu(value)
-                    )
-                } else {
-                    contextMenu.items.setAll(deleteMenuItem)
-                }
-                contextMenu.show(tree, event.screenX, event.screenY)
-            }
+            val selectedItem = tree.selectionModel.selectedItem ?: return@setOnContextMenuRequested
+            val value = selectedItem.value
+            contextMenu.items.setAll(buildContextMenuItems(value))
+            contextMenu.show(tree, event.screenX, event.screenY)
         }
 
-        // Hide context menu when clicking elsewhere
         tree.setOnMousePressed { event ->
             if (event.isPrimaryButtonDown) {
                 contextMenu.hide()
@@ -1171,73 +1149,51 @@ class TabTable(
         }
     }
 
-    private fun createChangeMenu(value: Any): Menu {
-        val changeMenu = Menu(I18n.s("menu.context.change"))
-
-        when (value) {
-            is Partition -> {
-                // Encrypted
-                val encryptedMenuItem = CheckMenuItem(I18n.s("menu.context.encrypted")).apply {
-                    isSelected = value.encrypted
-                    setOnAction {
-                        value.encrypted = !value.encrypted
+    private fun buildContextMenuItems(value: Any): List<MenuItem> {
+        return when (value) {
+            is Partition -> ContextMenuFactory.createPartitionMenu(
+                value,
+                ContextMenuFactory.PartitionCallbacks(
+                    onDelete = { onDeleteSelected() },
+                    onMove = { onMovePartition() },
+                    onToggleEncrypted = { newValue ->
+                        value.encrypted = newValue
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    },
+                    onToggleCloud = { newValue ->
+                        value.cloudBackup = newValue
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    },
+                    onToggleVirtual = { newValue ->
+                        value.virtual = newValue
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    },
+                    onToggleHidden = { newValue ->
+                        value.hidden = newValue
                         DiskRepository.updatePartition(value)
                         onDataChanged()
                     }
+                )
+            ).items.toList()
+
+            is Disk -> ContextMenuFactory.createDiskMenu(
+                value,
+                onDelete = { onDeleteSelected() },
+                onToggleHidden = { hidden ->
+                    value.hidden = hidden
+                    DiskRepository.updateDisk(value)
+                    onDataChanged()
                 }
+            ).items.toList()
 
-                // Cloud Backup
-                val cloudMenuItem = CheckMenuItem(I18n.s("menu.context.cloudBackup")).apply {
-                    isSelected = value.cloudBackup
-                    setOnAction {
-                        value.cloudBackup = !value.cloudBackup
-                        DiskRepository.updatePartition(value)
-                        onDataChanged()
-                    }
-                }
-
-                // Virtual
-                val virtualMenuItem = CheckMenuItem(I18n.s("menu.context.virtual")).apply {
-                    isSelected = value.virtual
-                    setOnAction {
-                        value.virtual = !value.virtual
-                        DiskRepository.updatePartition(value)
-                        onDataChanged()
-                    }
-                }
-
-                // Hidden
-                val hiddenMenuItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
-                    isSelected = value.hidden
-                    setOnAction {
-                        value.hidden = !value.hidden
-                        DiskRepository.updatePartition(value)
-                        onDataChanged()
-                    }
-                }
-
-                changeMenu.items.setAll(encryptedMenuItem, cloudMenuItem, virtualMenuItem, hiddenMenuItem)
-            }
-
-            is Disk -> {
-                // Hidden
-                val hiddenMenuItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
-                    isSelected = value.hidden
-                    setOnAction {
-                        value.hidden = !value.hidden
-                        DiskRepository.updateDisk(value)
-                        onDataChanged()
-                    }
-                }
-
-                changeMenu.items.setAll(hiddenMenuItem)
-            }
+            else -> listOf(deleteMenuItem)
         }
-
-        return changeMenu
     }
 
-    private fun onMovePartition() {
+    internal fun onMovePartition() {
         val selectedItem = tree.selectionModel.selectedItem ?: return
         val partition = selectedItem.value as? Partition ?: return
 

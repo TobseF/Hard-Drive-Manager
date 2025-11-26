@@ -42,9 +42,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
     private val groupBox = ComboBox<String>()
 
-    private val tabCards = TabCards()
-    private val tabPartitions = TabPartitions()
     private val tabTable = TabTable(showHiddenProp) { reloadFromDb() }
+    private val tabCards = TabCards { reloadFromDb() }
+    private val tabPartitions = TabPartitions { reloadFromDb() }
     private val tabStatistics = TabStatistics()
     private lateinit var tabs: TabPane
 

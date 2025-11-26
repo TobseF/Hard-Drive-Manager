@@ -1,15 +1,13 @@
 package de.tfr.tool.ui
 
-import de.tfr.tool.model.Disk
-import de.tfr.tool.model.PartitionType
-import de.tfr.tool.model.formatSize
-import de.tfr.tool.model.percentOf
+import de.tfr.tool.model.*
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
+import javafx.scene.input.ContextMenuEvent
 import javafx.scene.layout.*
 import javafx.scene.paint.Color
 import javafx.scene.shape.Circle
@@ -35,6 +33,7 @@ class DiskCard(val disk: Disk) : StackPane() {
         val barFill: Rectangle
     )
     private val parts = mutableListOf<PartViews>()
+    private val partitionNodes = mutableListOf<Pair<Partition, Node>>()
 
     init {
         padding = Insets(8.0)
@@ -178,6 +177,8 @@ class DiskCard(val disk: Disk) : StackPane() {
             if (cloudIcon != null) partStack.children += cloudIcon
             if (lockIcon != null) partStack.children += lockIcon
             if (virtualIcon != null) partStack.children += virtualIcon
+
+            partitionNodes += p to partStack
 
             // Visibility updates when properties change
             try { p.cloudBackupProp.addListener { _, _, new -> cloudIcon?.isVisible = new } } catch (_: Exception) {}
@@ -362,6 +363,15 @@ class DiskCard(val disk: Disk) : StackPane() {
             fitHeight = h
             isMouseTransparent = true
             // Wrapper not necessary; StackPane alignment works on Node directly
+        }
+    }
+
+    fun setPartitionContextMenuHandler(handler: (Partition, ContextMenuEvent) -> Unit) {
+        partitionNodes.forEach { (partition, node) ->
+            node.setOnContextMenuRequested { event ->
+                handler(partition, event)
+                event.consume()
+            }
         }
     }
 }

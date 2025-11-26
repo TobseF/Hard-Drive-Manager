@@ -2,11 +2,16 @@ package de.tfr.tool.ui
 
 import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.Disk
+import de.tfr.tool.model.Partition
+import de.tfr.tool.persist.DiskRepository
+import de.tfr.tool.ui.context.ContextMenuFactory
+import de.tfr.tool.ui.context.PartitionActions
+import de.tfr.tool.ui.util.DialogHelper
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.Node
-import javafx.scene.control.Label
-import javafx.scene.control.ScrollPane
+import javafx.scene.control.*
+import javafx.scene.input.ContextMenuEvent
 import javafx.scene.layout.FlowPane
 import javafx.scene.layout.Pane
 import javafx.scene.layout.StackPane
@@ -20,7 +25,7 @@ import javafx.scene.layout.VBox
  * - Manage equal/fixed card height options and apply them after layout
  * - React to theme and language changes via dedicated methods
  */
-class TabCards : ScrollPane() {
+class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
 
     // Container for swapping the cards content (flat flow or grouped VBox)
     private val cardsContainer = StackPane()
@@ -93,6 +98,7 @@ class TabCards : ScrollPane() {
             disks.filter { !it.hidden }.forEach { d ->
                 val c = DiskCard(d)
                 c.applyTheme(ThemeManager.currentTheme)
+                installContextMenus(c, d)
                 flow.children += c
             }
             flow
@@ -112,6 +118,7 @@ class TabCards : ScrollPane() {
                 list.forEach { d ->
                     val c = DiskCard(d)
                     c.applyTheme(ThemeManager.currentTheme)
+                    installContextMenus(c, d)
                     row.children += c
                 }
 
@@ -180,5 +187,90 @@ class TabCards : ScrollPane() {
                 it.setCardGrowEnabled(true)
             }
         }
+    }
+
+    private fun installContextMenus(card: DiskCard, disk: Disk) {
+        var activeMenu: ContextMenu? = null
+
+        fun showMenu(menu: ContextMenu, anchor: Node, event: ContextMenuEvent) {
+            activeMenu?.hide()
+            menu.show(anchor, event.screenX, event.screenY)
+            activeMenu = menu
+        }
+
+        card.setOnContextMenuRequested { event ->
+            showMenu(buildDiskContextMenu(disk), card, event)
+            event.consume()
+        }
+
+        card.setPartitionContextMenuHandler { partition, event ->
+            val anchor = event.source as? Node ?: card
+            showMenu(buildPartitionContextMenu(partition), anchor, event)
+        }
+
+        card.setOnMousePressed { event ->
+            if (event.isPrimaryButtonDown) {
+                activeMenu?.hide()
+            }
+        }
+    }
+
+    private fun buildDiskContextMenu(disk: Disk): ContextMenu {
+        return ContextMenuFactory.createDiskMenu(
+            disk = disk,
+            onDelete = { confirmDeleteDisk(disk) },
+            onToggleHidden = { hidden ->
+                disk.hidden = hidden
+                DiskRepository.updateDisk(disk)
+                onRequestRefresh()
+            }
+        )
+    }
+
+    private fun confirmDeleteDisk(disk: Disk) {
+        val alert = Alert(Alert.AlertType.CONFIRMATION)
+        alert.title = I18n.s("alert.delete.title")
+        alert.headerText = null
+        alert.contentText = I18n.s("alert.delete.askDisk", disk.name)
+
+        val confirmButton = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
+        val cancelButton = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
+        alert.buttonTypes.setAll(confirmButton, cancelButton)
+
+        val result = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
+        if (result.isPresent && result.get() == confirmButton) {
+            DiskRepository.deleteDisk(disk.id)
+            onRequestRefresh()
+        }
+    }
+
+    private fun buildPartitionContextMenu(partition: Partition): ContextMenu {
+        return ContextMenuFactory.createPartitionMenu(
+            partition,
+            ContextMenuFactory.PartitionCallbacks(
+                onDelete = { PartitionActions.confirmDeletePartition(partition) { onRequestRefresh() } },
+                onMove = { PartitionActions.movePartition(partition) { onRequestRefresh() } },
+                onToggleEncrypted = { newValue ->
+                    partition.encrypted = newValue
+                    DiskRepository.updatePartition(partition)
+                    onRequestRefresh()
+                },
+                onToggleCloud = { newValue ->
+                    partition.cloudBackup = newValue
+                    DiskRepository.updatePartition(partition)
+                    onRequestRefresh()
+                },
+                onToggleVirtual = { newValue ->
+                    partition.virtual = newValue
+                    DiskRepository.updatePartition(partition)
+                    onRequestRefresh()
+                },
+                onToggleHidden = { newValue ->
+                    partition.hidden = newValue
+                    DiskRepository.updatePartition(partition)
+                    onRequestRefresh()
+                }
+            )
+        )
     }
 }
