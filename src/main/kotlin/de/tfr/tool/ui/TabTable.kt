@@ -1090,8 +1090,7 @@ class TabTable(
             "hidden" to Settings.Table.showHiddenCol
         )
 
-        // List of all columns in the correct order
-        val allColumns = listOf(
+        val columnMap = mapOf(
             "name" to nameCol,
             "type" to typeCol,
             "letter" to letterCol,
@@ -1113,10 +1112,15 @@ class TabTable(
             "hidden" to hiddenCol
         )
 
-        // Build list of visible columns in the correct order
-        val visibleColumns = allColumns
-            .filter { (id, _) -> visibilityMap[id] ?: true }
-            .map { (_, col) -> col }
+        // Get the saved column order from settings
+        val columnOrder = ColumnVisibilityDialog.getColumnOrder()
+
+        // Build list of visible columns in the saved order
+        val visibleColumns = columnOrder
+            .mapNotNull { id ->
+                val col = columnMap[id]
+                if (col != null && (visibilityMap[id] ?: true)) col else null
+            }
 
         tree.columns.setAll(visibleColumns)
     }
