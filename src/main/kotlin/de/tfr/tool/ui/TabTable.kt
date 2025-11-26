@@ -991,9 +991,20 @@ class TabTable(
             val selectedItem = tree.selectionModel.selectedItem
             if (selectedItem != null) {
                 val value = selectedItem.value
-                // Show move option only for partitions
+                // Build context menu based on selected item type
                 if (value is Partition) {
-                    contextMenu.items.setAll(deleteMenuItem, moveMenuItem)
+                    contextMenu.items.setAll(
+                        deleteMenuItem,
+                        moveMenuItem,
+                        SeparatorMenuItem(),
+                        createChangeMenu(value)
+                    )
+                } else if (value is Disk) {
+                    contextMenu.items.setAll(
+                        deleteMenuItem,
+                        SeparatorMenuItem(),
+                        createChangeMenu(value)
+                    )
                 } else {
                     contextMenu.items.setAll(deleteMenuItem)
                 }
@@ -1007,6 +1018,72 @@ class TabTable(
                 contextMenu.hide()
             }
         }
+    }
+
+    private fun createChangeMenu(value: Any): Menu {
+        val changeMenu = Menu(I18n.s("menu.context.change"))
+
+        when (value) {
+            is Partition -> {
+                // Encrypted
+                val encryptedMenuItem = CheckMenuItem(I18n.s("menu.context.encrypted")).apply {
+                    isSelected = value.encrypted
+                    setOnAction {
+                        value.encrypted = !value.encrypted
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    }
+                }
+
+                // Cloud Backup
+                val cloudMenuItem = CheckMenuItem(I18n.s("menu.context.cloudBackup")).apply {
+                    isSelected = value.cloudBackup
+                    setOnAction {
+                        value.cloudBackup = !value.cloudBackup
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    }
+                }
+
+                // Virtual
+                val virtualMenuItem = CheckMenuItem(I18n.s("menu.context.virtual")).apply {
+                    isSelected = value.virtual
+                    setOnAction {
+                        value.virtual = !value.virtual
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    }
+                }
+
+                // Hidden
+                val hiddenMenuItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
+                    isSelected = value.hidden
+                    setOnAction {
+                        value.hidden = !value.hidden
+                        DiskRepository.updatePartition(value)
+                        onDataChanged()
+                    }
+                }
+
+                changeMenu.items.setAll(encryptedMenuItem, cloudMenuItem, virtualMenuItem, hiddenMenuItem)
+            }
+
+            is Disk -> {
+                // Hidden
+                val hiddenMenuItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
+                    isSelected = value.hidden
+                    setOnAction {
+                        value.hidden = !value.hidden
+                        DiskRepository.updateDisk(value)
+                        onDataChanged()
+                    }
+                }
+
+                changeMenu.items.setAll(hiddenMenuItem)
+            }
+        }
+
+        return changeMenu
     }
 
     private fun onMovePartition() {
