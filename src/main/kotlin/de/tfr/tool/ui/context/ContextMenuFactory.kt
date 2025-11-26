@@ -3,16 +3,21 @@ package de.tfr.tool.ui.context
 import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
-import javafx.scene.control.*
+import javafx.scene.control.CheckMenuItem
+import javafx.scene.control.ContextMenu
+import javafx.scene.control.Menu
+import javafx.scene.control.MenuItem
 
 object ContextMenuFactory {
     data class DiskCallbacks(
         val onDelete: () -> Unit,
+        val onRename: () -> Unit,
         val onToggleHidden: (Boolean) -> Unit
     )
 
     data class PartitionCallbacks(
         val onDelete: () -> Unit,
+        val onRename: () -> Unit,
         val onMove: () -> Unit,
         val onToggleEncrypted: (Boolean) -> Unit,
         val onToggleCloud: (Boolean) -> Unit,
@@ -20,9 +25,9 @@ object ContextMenuFactory {
         val onToggleHidden: (Boolean) -> Unit
     )
 
-    fun createDiskMenu(disk: Disk, onDelete: () -> Unit, onToggleHidden: (Boolean) -> Unit): ContextMenu {
-        val deleteItem = MenuItem(I18n.s("menu.context.delete")).apply {
-            setOnAction { onDelete() }
+    fun createDiskMenu(disk: Disk, callbacks: DiskCallbacks): ContextMenu {
+        val renameItem = MenuItem(I18n.s("menu.context.rename")).apply {
+            setOnAction { callbacks.onRename() }
         }
 
         val hiddenItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
@@ -30,25 +35,21 @@ object ContextMenuFactory {
             setOnAction {
                 val newValue = isSelected
                 if (disk.hidden != newValue) {
-                    onToggleHidden(newValue)
+                    callbacks.onToggleHidden(newValue)
                 }
             }
         }
 
-        val changeMenu = Menu(I18n.s("menu.context.change")).apply {
-            items.setAll(hiddenItem)
-        }
-
-        return ContextMenu(deleteItem, SeparatorMenuItem(), changeMenu)
-    }
-
-    fun createPartitionMenu(partition: Partition, callbacks: PartitionCallbacks): ContextMenu {
         val deleteItem = MenuItem(I18n.s("menu.context.delete")).apply {
             setOnAction { callbacks.onDelete() }
         }
 
-        val moveItem = MenuItem(I18n.s("menu.context.move")).apply {
-            setOnAction { callbacks.onMove() }
+        return ContextMenu(renameItem, hiddenItem, deleteItem)
+    }
+
+    fun createPartitionMenu(partition: Partition, callbacks: PartitionCallbacks): ContextMenu {
+        val renameItem = MenuItem(I18n.s("menu.context.rename")).apply {
+            setOnAction { callbacks.onRename() }
         }
 
         val encryptedItem = CheckMenuItem(I18n.s("menu.context.encrypted")).apply {
@@ -81,6 +82,14 @@ object ContextMenuFactory {
             }
         }
 
+        val optionsMenu = Menu(I18n.s("menu.context.options")).apply {
+            items.setAll(encryptedItem, cloudItem, virtualItem)
+        }
+
+        val moveItem = MenuItem(I18n.s("menu.context.move")).apply {
+            setOnAction { callbacks.onMove() }
+        }
+
         val hiddenItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
             isSelected = partition.hidden
             setOnAction {
@@ -91,11 +100,10 @@ object ContextMenuFactory {
             }
         }
 
-        val changeMenu = Menu(I18n.s("menu.context.change")).apply {
-            items.setAll(encryptedItem, cloudItem, virtualItem, hiddenItem)
+        val deleteItem = MenuItem(I18n.s("menu.context.delete")).apply {
+            setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(deleteItem, moveItem, SeparatorMenuItem(), changeMenu)
+        return ContextMenu(renameItem, optionsMenu, moveItem, hiddenItem, deleteItem)
     }
 }
-

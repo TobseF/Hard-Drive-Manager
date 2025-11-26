@@ -8,6 +8,7 @@ import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager
 import de.tfr.tool.ui.util.DialogHelper
+import de.tfr.tool.ui.util.TabTableNameFormatter
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.VBox
@@ -104,5 +105,23 @@ object PartitionActions {
             }
         }
     }
-}
 
+    fun renamePartition(partition: Partition, onRefresh: () -> Unit) {
+        val dialog = TextInputDialog(partition.name)
+        dialog.title = I18n.s("dialog.rename.partition.title")
+        dialog.headerText = null
+        dialog.contentText = I18n.s("dialog.rename.partition.prompt")
+        dialog.editor.textFormatter = TabTableNameFormatter.create()
+        val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
+        okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
+        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        if (result.isPresent) {
+            val newName = result.get().trim()
+            if (newName.isNotEmpty() && newName != partition.name) {
+                partition.name = newName
+                DiskRepository.updatePartition(partition)
+                onRefresh()
+            }
+        }
+    }
+}

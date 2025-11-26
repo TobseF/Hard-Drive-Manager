@@ -7,6 +7,7 @@ import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
 import de.tfr.tool.ui.util.DialogHelper
+import de.tfr.tool.ui.util.TabTableNameFormatter
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.Node
@@ -218,12 +219,15 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
     private fun buildDiskContextMenu(disk: Disk): ContextMenu {
         return ContextMenuFactory.createDiskMenu(
             disk = disk,
-            onDelete = { confirmDeleteDisk(disk) },
-            onToggleHidden = { hidden ->
-                disk.hidden = hidden
-                DiskRepository.updateDisk(disk)
-                onRequestRefresh()
-            }
+            callbacks = ContextMenuFactory.DiskCallbacks(
+                onDelete = { confirmDeleteDisk(disk) },
+                onRename = { showRenameDiskDialog(disk) },
+                onToggleHidden = { hidden ->
+                    disk.hidden = hidden
+                    DiskRepository.updateDisk(disk)
+                    onRequestRefresh()
+                }
+            )
         )
     }
 
@@ -249,6 +253,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
             partition,
             ContextMenuFactory.PartitionCallbacks(
                 onDelete = { PartitionActions.confirmDeletePartition(partition) { onRequestRefresh() } },
+                onRename = { showRenamePartitionDialog(partition) },
                 onMove = { PartitionActions.movePartition(partition) { onRequestRefresh() } },
                 onToggleEncrypted = { newValue ->
                     partition.encrypted = newValue
@@ -272,5 +277,43 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
                 }
             )
         )
+    }
+
+    private fun showRenameDiskDialog(disk: Disk) {
+        val dialog = TextInputDialog(disk.name)
+        dialog.title = I18n.s("dialog.rename.disk.title")
+        dialog.headerText = null
+        dialog.contentText = I18n.s("dialog.rename.disk.prompt")
+        dialog.editor.textFormatter = TabTableNameFormatter.create()
+        val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
+        okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
+        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        if (result.isPresent) {
+            val newName = result.get().trim()
+            if (newName.isNotEmpty() && newName != disk.name) {
+                disk.name = newName
+                DiskRepository.updateDisk(disk)
+                onRequestRefresh()
+            }
+        }
+    }
+
+    private fun showRenamePartitionDialog(partition: Partition) {
+        val dialog = TextInputDialog(partition.name)
+        dialog.title = I18n.s("dialog.rename.partition.title")
+        dialog.headerText = null
+        dialog.contentText = I18n.s("dialog.rename.partition.prompt")
+        dialog.editor.textFormatter = TabTableNameFormatter.create()
+        val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
+        okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
+        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        if (result.isPresent) {
+            val newName = result.get().trim()
+            if (newName.isNotEmpty() && newName != partition.name) {
+                partition.name = newName
+                DiskRepository.updatePartition(partition)
+                onRequestRefresh()
+            }
+        }
     }
 }
