@@ -2,6 +2,7 @@ package de.tfr.tool.persist
 
 import de.tfr.tool.de.tfr.tool.ui.i18n.Language
 import de.tfr.tool.model.DisplayUnit
+import de.tfr.tool.model.SortDirection
 import de.tfr.tool.ui.Theme
 import java.util.prefs.Preferences
 import kotlin.reflect.KProperty
@@ -26,6 +27,8 @@ object Settings {
 
     object Table {
         var showHidden by BooleanProp("table.showHidden")
+        var sortField by StringProp("table.sortField", "name")
+        var sortDirection by EnumProp("table.sortDirection", SortDirection::fromString, SortDirection.ASCENDING)
     }
 
     class StringProp(private val key: String, private val defaultValue: String = "", private val trim: Boolean = true) {

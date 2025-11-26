@@ -1,11 +1,9 @@
 package de.tfr.tool.ui
 
 import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
-import de.tfr.tool.model.Disk
-import de.tfr.tool.model.Partition
-import de.tfr.tool.model.formatSize
-import de.tfr.tool.model.percentOf
+import de.tfr.tool.model.*
 import de.tfr.tool.persist.DiskRepository
+import de.tfr.tool.persist.Settings
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.beans.property.BooleanProperty
 import javafx.beans.property.SimpleBooleanProperty
@@ -143,6 +141,130 @@ class TabTable(
             toggleOnlyPartitions
         )
         return row
+    }
+
+
+    private fun applySorting() {
+        if (currentDisks.isEmpty()) return
+
+        val currentSort = SortConfiguration(Settings.Table.sortField, Settings.Table.sortDirection)
+        val sortComparator = getSortComparator(currentSort.fieldName, currentSort.direction)
+
+        // Sort disks and their partitions (cast to mutable list if needed)
+        val disksList = currentDisks.toMutableList()
+        disksList.sortWith(sortComparator)
+
+        // Sort partitions within each disk
+        disksList.forEach { disk ->
+            disk.partitions.sortWith(sortComparator)
+        }
+
+        // Replace currentDisks with sorted version
+        this.currentDisks = disksList
+    }
+
+    private fun getSortComparator(fieldName: String, direction: SortDirection): Comparator<Any> {
+        val baseComparator = Comparator<Any> { o1, o2 ->
+            when (fieldName) {
+                "name" -> {
+                    val name1 = when (o1) {
+                        is Disk -> o1.name
+                        is Partition -> o1.name
+                        else -> ""
+                    }
+                    val name2 = when (o2) {
+                        is Disk -> o2.name
+                        is Partition -> o2.name
+                        else -> ""
+                    }
+                    name1.compareTo(name2)
+                }
+
+                "type" -> {
+                    val type1 = when (o1) {
+                        is Disk -> o1.type
+                        is Partition -> o1.type
+                        else -> ""
+                    }
+                    val type2 = when (o2) {
+                        is Disk -> o2.type
+                        is Partition -> o2.type
+                        else -> ""
+                    }
+                    type1.compareTo(type2)
+                }
+
+                "size" -> {
+                    val size1 = when (o1) {
+                        is Disk -> o1.sizeMB
+                        is Partition -> o1.sizeMB
+                        else -> 0.0
+                    }
+                    val size2 = when (o2) {
+                        is Disk -> o2.sizeMB
+                        is Partition -> o2.sizeMB
+                        else -> 0.0
+                    }
+                    size1.compareTo(size2)
+                }
+
+                "used" -> {
+                    val used1 = when (o1) {
+                        is Disk -> o1.usedMB
+                        is Partition -> o1.usedMB
+                        else -> 0.0
+                    }
+                    val used2 = when (o2) {
+                        is Disk -> o2.usedMB
+                        is Partition -> o2.usedMB
+                        else -> 0.0
+                    }
+                    used1.compareTo(used2)
+                }
+
+                "free" -> {
+                    val free1 = when (o1) {
+                        is Disk -> (o1.sizeMB - o1.usedMB).coerceAtLeast(0.0)
+                        is Partition -> (o1.sizeMB - o1.usedMB).coerceAtLeast(0.0)
+                        else -> 0.0
+                    }
+                    val free2 = when (o2) {
+                        is Disk -> (o2.sizeMB - o2.usedMB).coerceAtLeast(0.0)
+                        is Partition -> (o2.sizeMB - o2.usedMB).coerceAtLeast(0.0)
+                        else -> 0.0
+                    }
+                    free1.compareTo(free2)
+                }
+
+                "letter" -> {
+                    val letter1 = (o1 as? Partition)?.letter ?: ""
+                    val letter2 = (o2 as? Partition)?.letter ?: ""
+                    letter1.compareTo(letter2)
+                }
+
+                "tags" -> {
+                    val tags1 = when (o1) {
+                        is Disk -> o1.tag
+                        is Partition -> o1.tags
+                        else -> ""
+                    }
+                    val tags2 = when (o2) {
+                        is Disk -> o2.tag
+                        is Partition -> o2.tags
+                        else -> ""
+                    }
+                    tags1.compareTo(tags2)
+                }
+
+                else -> 0
+            }
+        }
+
+        return if (direction == SortDirection.DESCENDING) {
+            baseComparator.reversed()
+        } else {
+            baseComparator
+        }
     }
 
     private fun buildTable(): Node {
@@ -682,6 +804,7 @@ class TabTable(
         toggleHidden.text = if (toggleHidden.isSelected) I18n.s("btn.hideHidden") else I18n.s("btn.showHidden")
         toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
 
+
         // Columns
         nameCol.text = I18n.s("col.name")
         typeCol.text = I18n.s("col.type")
@@ -710,6 +833,10 @@ class TabTable(
 
     fun updateData(disks: List<Disk>) {
         this.currentDisks = disks
+
+        // Apply sorting
+        applySorting()
+
         val root = TreeItem<Any>("root")
         val showAll = showHiddenProp.get()
         val onlyPartitions = onlyPartitionsProp.get()

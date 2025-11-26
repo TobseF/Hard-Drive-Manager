@@ -30,7 +30,12 @@ dependencies {
     implementation("org.kordamp.ikonli:ikonli-feather-pack:12.4.0")
     implementation("org.kordamp.ikonli:ikonli-materialdesign2-pack:12.4.0")
 
+    // Test dependencies
     testImplementation(kotlin("test"))
+    // JUnit5 (Jupiter) für Tests
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
 }
 
 tasks.test {
@@ -56,3 +61,4 @@ javafx {
     version = "25.0.1"
     modules = listOf("javafx.controls", "javafx.graphics", "javafx.swing")
 }
+

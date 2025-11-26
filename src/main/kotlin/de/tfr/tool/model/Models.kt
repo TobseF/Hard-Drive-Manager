@@ -20,6 +20,24 @@ enum class DisplayUnit {
     }
 }
 
+enum class SortDirection {
+    ASCENDING, DESCENDING;
+
+    companion object {
+        fun fromString(name: String?): SortDirection = when (name?.uppercase()) {
+            "DESCENDING" -> DESCENDING
+            else -> ASCENDING
+        }
+    }
+
+    fun reverse(): SortDirection = if (this == ASCENDING) DESCENDING else ASCENDING
+}
+
+data class SortConfiguration(
+    val fieldName: String = "name",
+    val direction: SortDirection = SortDirection.ASCENDING
+)
+
 data class Partition(
     val idProp: SimpleLongProperty = SimpleLongProperty(0L),
     val diskIdProp: SimpleLongProperty = SimpleLongProperty(0L),
