@@ -29,6 +29,27 @@ object Settings {
         var showHidden by BooleanProp("table.showHidden")
         var sortField by StringProp("table.sortField", "name")
         var sortDirection by EnumProp("table.sortDirection", SortDirection::fromString, SortDirection.ASCENDING)
+
+        // Column visibility settings
+        var showName by BooleanProp("table.col.showName", true)
+        var showType by BooleanProp("table.col.showType", true)
+        var showLetter by BooleanProp("table.col.showLetter", true)
+        var showSize by BooleanProp("table.col.showSize", true)
+        var showUsed by BooleanProp("table.col.showUsed", true)
+        var showFree by BooleanProp("table.col.showFree", true)
+        var showPercentText by BooleanProp("table.col.showPercentText", true)
+        var showPartOfDiskBar by BooleanProp("table.col.showPartOfDiskBar", true)
+        var showBar by BooleanProp("table.col.showBar", true)
+        var showTag by BooleanProp("table.col.showTag", true)
+        var showModel by BooleanProp("table.col.showModel", false)
+        var showManufacturer by BooleanProp("table.col.showManufacturer", false)
+        var showSerial by BooleanProp("table.col.showSerial", false)
+        var showUuid by BooleanProp("table.col.showUuid", false)
+        var showFsType by BooleanProp("table.col.showFsType", false)
+        var showEncrypted by BooleanProp("table.col.showEncrypted", true)
+        var showCloud by BooleanProp("table.col.showCloud", true)
+        var showVirtual by BooleanProp("table.col.showVirtual", false)
+        var showHiddenCol by BooleanProp("table.col.showHidden", true)
     }
 
     class StringProp(private val key: String, private val defaultValue: String = "", private val trim: Boolean = true) {

@@ -4,11 +4,13 @@ import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.*
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.persist.Settings
+import de.tfr.tool.ui.settings.ColumnVisibilityDialog
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.beans.property.BooleanProperty
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
+import javafx.collections.ListChangeListener
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
@@ -18,6 +20,7 @@ import javafx.scene.control.cell.TextFieldTreeTableCell
 import javafx.scene.layout.*
 import javafx.util.StringConverter
 import mu.KotlinLogging
+import org.kordamp.ikonli.materialdesign2.MaterialDesignT
 import org.kordamp.ikonli.materialdesign2.MaterialDesignU
 
 /**
@@ -46,6 +49,7 @@ class TabTable(
     private val collapseAllBtn = Button()
     private val toggleHidden = ToggleButton()
     private val toggleOnlyPartitions = ToggleButton()
+    private val configColumnsBtn = Button()
 
     // Keep references to important columns to update captions on translation/theme changes
     private lateinit var nameCol: TreeTableColumn<Any, String>
@@ -127,6 +131,15 @@ class TabTable(
         toggleOnlyPartitions.selectedProperty().bindBidirectional(onlyPartitionsProp)
         toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
 
+        configColumnsBtn.tooltip = Tooltip(I18n.s("table.columnVisibility.button"))
+        configColumnsBtn.graphic = ThemeManager.currentTheme.createIcon(MaterialDesignT.TABLE_SETTINGS)
+        configColumnsBtn.setOnAction {
+            val result = ColumnVisibilityDialog.show()
+            if (result != null) {
+                reloadColumnVisibility()
+            }
+        }
+
         row.children += listOf(
             editBtn,
             Separator(),
@@ -138,7 +151,9 @@ class TabTable(
             collapseAllBtn,
             Separator(),
             toggleHidden,
-            toggleOnlyPartitions
+            toggleOnlyPartitions,
+            Separator(),
+            configColumnsBtn
         )
         return row
     }
@@ -788,10 +803,87 @@ class TabTable(
             virtualCol,
             hiddenCol
         )
+
+        // Apply column visibility settings
+        applyColumnVisibility()
+
+        val listChangeListener: ListChangeListener<TreeTableColumn<Any, *>> = {
+            val sortedColumn = tree.sortOrder.firstOrNull()
+            if (sortedColumn != null) {
+                // Find the column name
+                val columnName = when (sortedColumn) {
+                    nameCol -> "name"
+                    typeCol -> "type"
+                    letterCol -> "letter"
+                    sizeCol -> "size"
+                    usedCol -> "used"
+                    freeCol -> "free"
+                    percentTextCol -> "percentText"
+                    partOfDiskBarCol -> "partOfDiskBar"
+                    barCol -> "bar"
+                    tagCol -> "tag"
+                    modelCol -> "model"
+                    manufacturerCol -> "manufacturer"
+                    serialCol -> "serial"
+                    uuidCol -> "uuid"
+                    fsTypeCol -> "fsType"
+                    encCol -> "encrypted"
+                    cloudCol -> "cloud"
+                    virtualCol -> "virtual"
+                    hiddenCol -> "hidden"
+                    else -> null
+                }
+
+                if (columnName != null) {
+                    val direction = if (sortedColumn.sortType == TreeTableColumn.SortType.ASCENDING)
+                        SortDirection.ASCENDING
+                    else
+                        SortDirection.DESCENDING
+
+                    Settings.Table.sortField = columnName
+                    Settings.Table.sortDirection = direction
+                }
+            }
+        }
+
+        // Add listener for sort order changes to persist sorting configuration
+        tree.sortOrder.addListener(listChangeListener)
+
+
         return tree
     }
 
     fun refresh() = tree.refresh()
+
+    fun updateColumnVisibility(visibilityMap: Map<String, Boolean>) {
+        // Save to settings
+        Settings.Table.showName = visibilityMap["name"] ?: true
+        Settings.Table.showType = visibilityMap["type"] ?: true
+        Settings.Table.showLetter = visibilityMap["letter"] ?: true
+        Settings.Table.showSize = visibilityMap["size"] ?: true
+        Settings.Table.showUsed = visibilityMap["used"] ?: true
+        Settings.Table.showFree = visibilityMap["free"] ?: true
+        Settings.Table.showPercentText = visibilityMap["percentText"] ?: true
+        Settings.Table.showPartOfDiskBar = visibilityMap["partOfDiskBar"] ?: true
+        Settings.Table.showBar = visibilityMap["bar"] ?: true
+        Settings.Table.showTag = visibilityMap["tag"] ?: true
+        Settings.Table.showModel = visibilityMap["model"] ?: false
+        Settings.Table.showManufacturer = visibilityMap["manufacturer"] ?: false
+        Settings.Table.showSerial = visibilityMap["serial"] ?: false
+        Settings.Table.showUuid = visibilityMap["uuid"] ?: false
+        Settings.Table.showFsType = visibilityMap["fsType"] ?: false
+        Settings.Table.showEncrypted = visibilityMap["encrypted"] ?: true
+        Settings.Table.showCloud = visibilityMap["cloud"] ?: true
+        Settings.Table.showVirtual = visibilityMap["virtual"] ?: false
+        Settings.Table.showHiddenCol = visibilityMap["hidden"] ?: true
+
+        // Apply changes immediately
+        applyColumnVisibility()
+    }
+
+    fun reloadColumnVisibility() {
+        applyColumnVisibility()
+    }
 
     fun applyTranslations() {
         // Buttons
@@ -803,6 +895,7 @@ class TabTable(
         collapseAllBtn.tooltip = Tooltip(I18n.s("btn.collapse.all"))
         toggleHidden.text = if (toggleHidden.isSelected) I18n.s("btn.hideHidden") else I18n.s("btn.showHidden")
         toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
+        configColumnsBtn.tooltip = Tooltip(I18n.s("table.columnVisibility.button"))
 
 
         // Columns
@@ -972,6 +1065,60 @@ class TabTable(
     private fun traverse(item: TreeItem<*>, action: (TreeItem<*>) -> Unit) {
         action(item)
         item.children.forEach { traverse(it, action) }
+    }
+
+    private fun applyColumnVisibility() {
+        val visibilityMap = mapOf(
+            "name" to Settings.Table.showName,
+            "type" to Settings.Table.showType,
+            "letter" to Settings.Table.showLetter,
+            "size" to Settings.Table.showSize,
+            "used" to Settings.Table.showUsed,
+            "free" to Settings.Table.showFree,
+            "percentText" to Settings.Table.showPercentText,
+            "partOfDiskBar" to Settings.Table.showPartOfDiskBar,
+            "bar" to Settings.Table.showBar,
+            "tag" to Settings.Table.showTag,
+            "model" to Settings.Table.showModel,
+            "manufacturer" to Settings.Table.showManufacturer,
+            "serial" to Settings.Table.showSerial,
+            "uuid" to Settings.Table.showUuid,
+            "fsType" to Settings.Table.showFsType,
+            "encrypted" to Settings.Table.showEncrypted,
+            "cloud" to Settings.Table.showCloud,
+            "virtual" to Settings.Table.showVirtual,
+            "hidden" to Settings.Table.showHiddenCol
+        )
+
+        // List of all columns in the correct order
+        val allColumns = listOf(
+            "name" to nameCol,
+            "type" to typeCol,
+            "letter" to letterCol,
+            "size" to sizeCol,
+            "used" to usedCol,
+            "free" to freeCol,
+            "percentText" to percentTextCol,
+            "partOfDiskBar" to partOfDiskBarCol,
+            "bar" to barCol,
+            "tag" to tagCol,
+            "model" to modelCol,
+            "manufacturer" to manufacturerCol,
+            "serial" to serialCol,
+            "uuid" to uuidCol,
+            "fsType" to fsTypeCol,
+            "encrypted" to encCol,
+            "cloud" to cloudCol,
+            "virtual" to virtualCol,
+            "hidden" to hiddenCol
+        )
+
+        // Build list of visible columns in the correct order
+        val visibleColumns = allColumns
+            .filter { (id, _) -> visibilityMap[id] ?: true }
+            .map { (_, col) -> col }
+
+        tree.columns.setAll(visibleColumns)
     }
 
     private fun setupContextMenu() {

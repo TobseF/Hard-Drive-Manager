@@ -34,7 +34,8 @@ data class SettingsResult(
     val ok: Boolean,
     val settings: AppSettings,
     val dbPathChanged: Boolean,
-    val dbCleared: Boolean
+    val dbCleared: Boolean,
+    val columnVisibilityChanged: Boolean = false
 )
 
 object SettingsDialog {
@@ -167,6 +168,17 @@ object SettingsDialog {
 
         val cbShowHidden = CheckBox(I18n.s("btn.showHidden")).apply { isSelected = current.showHidden }
 
+        var columnVisibilityChanged = false
+        val btnConfigureColumns = Button(I18n.s("table.columnVisibility.button")).apply {
+            setOnAction {
+                val result = ColumnVisibilityDialog.show()
+                if (result != null) {
+                    columnVisibilityChanged = true
+                }
+            }
+        }
+        val rowConfigColumns = HBox(8.0, btnConfigureColumns).apply { alignment = Pos.CENTER_LEFT }
+
         content.children += dbRow
         content.children += cbEqual
         content.children += rowFixed
@@ -174,6 +186,8 @@ object SettingsDialog {
         content.children += rowLang
         content.children += rowUnit
         content.children += cbShowHidden
+        content.children += Separator()
+        content.children += rowConfigColumns
         dialog.dialogPane.content = content
 
         themeBox.selectionModel.selectedIndexProperty().addListener { _, _, newIdx ->
@@ -215,6 +229,7 @@ object SettingsDialog {
             (dbRow.children[2] as Button).text = I18n.s("settings.db.browse")
             (dbRow.children[3] as Button).text = I18n.s("settings.db.clear")
             cbShowHidden.text = I18n.s("btn.showHidden")
+            btnConfigureColumns.text = I18n.s("table.columnVisibility.button")
 
             (dialog.dialogPane.lookupButton(okButtonType) as? Button)?.text = I18n.s("btn.ok")
             (dialog.dialogPane.lookupButton(cancelButtonType) as? Button)?.text = I18n.s("btn.cancel")
@@ -224,7 +239,7 @@ object SettingsDialog {
         if (!res.isPresent || res.get() != okButtonType) {
             ThemeManager.setTheme(current.theme)
             I18n.setLanguage(current.language)
-            return SettingsResult(false, current, false, dbClearedFlag)
+            return SettingsResult(false, current, false, dbClearedFlag, columnVisibilityChanged)
         }
 
         val raw = tfPx.text.trim().replace(',', '.')
@@ -250,6 +265,6 @@ object SettingsDialog {
             dbPath = newDbPath.ifBlank { null },
             showHidden = cbShowHidden.isSelected
         )
-        return SettingsResult(true, newSettings, dbChanged, dbClearedFlag)
+        return SettingsResult(true, newSettings, dbChanged, dbClearedFlag, columnVisibilityChanged)
     }
 }

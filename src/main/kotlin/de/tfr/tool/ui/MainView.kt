@@ -46,6 +46,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     private val tabPartitions = TabPartitions()
     private val tabTable = TabTable(showHiddenProp) { reloadFromDb() }
     private val tabStatistics = TabStatistics()
+    private lateinit var tabs: TabPane
 
     init {
         padding = Insets(10.0)
@@ -262,7 +263,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     }
 
     private fun buildTabs(): Node {
-        val tabs = TabPane()
+        tabs = TabPane()
         tabs.tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
 
         val tabCards = Tab(I18n.s("tab.cards"))
@@ -523,6 +524,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
             showHidden = showHiddenProp.get()
         )
 
+        // Save the current tab index BEFORE opening the settings dialog
+        val currentTabIndex = tabs.selectionModel.selectedIndex
+
         val result = SettingsDialog.show(current)
         if (!result.ok) return
 
@@ -541,9 +545,6 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         ThemeManager.setTheme(setting.theme)
         I18n.setLanguage(setting.language)
         applyTranslations()
-
-        // Refresh UI to apply new display unit
-        applySortingAndGrouping()
 
         // Switch database path if needed
         if (result.dbPathChanged) {
@@ -576,7 +577,13 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
             applySortingAndGrouping()
             tabCards.applyEqualHeights()
             tabPartitions.applyEqualHeights()
+            if (result.columnVisibilityChanged) {
+                tabTable.reloadColumnVisibility()
+            }
         }
+
+        // Restore the tab index ONCE at the very end, after all UI updates
+        tabs.selectionModel.select(currentTabIndex)
 
         savePreferences()
     }
