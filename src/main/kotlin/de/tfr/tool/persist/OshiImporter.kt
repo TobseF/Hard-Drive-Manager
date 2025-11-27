@@ -41,6 +41,9 @@ object OshiImporter {
         val diskBySerial = existingDisks.associateBy { it.serial.trim().lowercase() }.toMutableMap()
         val disksByModelSize =
             existingDisks.associateBy { (it.model.trim().lowercase()) + "|" + it.sizeTB.toString() }.toMutableMap()
+        // Additional lookup map for name + size (for disks without serial number)
+        val disksByNameSize =
+            existingDisks.associateBy { (it.name.trim().lowercase()) + "|" + it.sizeMB.toString() }.toMutableMap()
 
         // Existing partitions lookup maps (UUID + drive letter)
         val partitionByUuid: MutableMap<String, Partition> =
@@ -157,6 +160,10 @@ object OshiImporter {
                 }
                 val generatedDriveName = listOf(manufacturer, type).filter { it.isNotBlank() }.joinToString(" ")
                     .ifBlank { model.ifBlank { serial }.ifBlank { "Disk" } }
+                // If still not found and serial is empty, try matching by name + size (to avoid duplicates)
+                if (diskFromDB == null && keySerial.isEmpty()) {
+                    diskFromDB = disksByNameSize[generatedDriveName.lowercase() + "|" + sizeMB.toString()]
+                }
                 if (diskFromDB == null) {
                     val newDisk = Disk().apply {
                         name = generatedDriveName
@@ -172,6 +179,7 @@ object OshiImporter {
                     existingDisks += newDisk
                     if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
                     disksByModelSize[model.lowercase() + "|" + sizeMB.toString()] = newDisk
+                    disksByNameSize[generatedDriveName.lowercase() + "|" + sizeMB.toString()] = newDisk
                     disksInserted.incrementAndGet()
                     newDisk
                 } else {
@@ -263,6 +271,10 @@ object OshiImporter {
             }
             val generatedDriveName = listOf(manufacturer, type).filter { it.isNotBlank() }.joinToString(" ")
                 .ifBlank { model.ifBlank { serial }.ifBlank { "Disk" } }
+            // If still not found and serial is empty, try matching by name + size (to avoid duplicates)
+            if (diskFromDB == null && keySerial.isEmpty()) {
+                diskFromDB = disksByNameSize[generatedDriveName.lowercase() + "|" + sizeMB.toString()]
+            }
             if (diskFromDB == null) {
                 val newDisk = Disk().apply {
                     name = generatedDriveName
@@ -278,6 +290,7 @@ object OshiImporter {
                 existingDisks += newDisk
                 if (serial.isNotEmpty()) diskBySerial[serial.lowercase()] = newDisk
                 disksByModelSize[model.lowercase() + "|" + sizeMB.toString()] = newDisk
+                disksByNameSize[generatedDriveName.lowercase() + "|" + sizeMB.toString()] = newDisk
                 disksInserted.incrementAndGet()
             } else {
                 var changed = false
