@@ -5,6 +5,7 @@ import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.model.formatSize
 import de.tfr.tool.model.percentOf
+import de.tfr.tool.ui.tag.TagChipFactory
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.Label
@@ -105,13 +106,17 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         // Footer: Type, Tags, Icons
         val footer = HBox(8.0).apply { alignment = Pos.CENTER_LEFT }
 
-        val typeLabel = Label(partition.type)
-        typeLabel.style = "-fx-font-size: 11px; -fx-text-fill: #888;"
-        footer.children += typeLabel
-
-        val tagsLabel = Label(if (partition.tags.isNotBlank()) partition.tags else I18n.s("stats.byTag.fallback"))
-        tagsLabel.style = "-fx-font-size: 11px; -fx-text-fill: #999;"
-        footer.children += tagsLabel
+        val tagsFlow = FlowPane(6.0, 6.0).apply {
+            alignment = Pos.CENTER_LEFT
+            maxWidth = 150.0
+        }
+        val parsedTags = TagChipFactory.parseTags(partition.tags)
+        if (parsedTags.isNotEmpty()) {
+            parsedTags.sorted().forEach { tag ->
+                tagsFlow.children += TagChipFactory.createTagChip(tag, removable = false)
+            }
+            footer.children += tagsFlow
+        }
 
         val iconsRow = HBox(4.0)
         iconsRow.alignment = Pos.CENTER_RIGHT
@@ -226,4 +231,3 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         }
     }
 }
-

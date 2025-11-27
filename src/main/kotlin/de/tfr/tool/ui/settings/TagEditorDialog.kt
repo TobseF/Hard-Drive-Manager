@@ -7,6 +7,7 @@ import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager
 import de.tfr.tool.ui.setIcon
+import de.tfr.tool.ui.tag.TagChipFactory
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -103,7 +104,11 @@ class TagEditorDialog {
         val updateTagsDisplay = {
             tagsFlowPane.children.clear()
             currentTags.sorted().forEach { tag ->
-                tagsFlowPane.children += createTagToken(tag, tagsFlowPane, isRemovable = true)
+                val chip = TagChipFactory.createTagChip(tag) { chipNode ->
+                    currentTags.remove(tag)
+                    tagsFlowPane.children.remove(chipNode)
+                }
+                tagsFlowPane.children += chip
             }
         }
 
@@ -343,30 +348,6 @@ class TagEditorDialog {
         }
     }
 
-    private fun createTagToken(tag: String, parent: FlowPane, isRemovable: Boolean = true): Node {
-        val token = HBox(4.0)
-        token.alignment = Pos.CENTER
-        token.style =
-            "-fx-background-color: #2196F3; -fx-text-fill: white; -fx-padding: 4 8 4 8; -fx-border-radius: 12; -fx-background-radius: 12;"
-
-        val label = Label(tag)
-        label.style = "-fx-text-fill: white; -fx-font-size: 11px;"
-
-        if (isRemovable) {
-            val closeBtn = Button("✕")
-            closeBtn.style =
-                "-fx-padding: 0; -fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold;"
-            closeBtn.setOnAction {
-                currentTags.remove(tag)
-                parent.children.remove(token)
-            }
-            token.children.setAll(label, closeBtn)
-        } else {
-            token.children.setAll(label)
-        }
-        return token
-    }
-
     private fun createAvailableTagToken(
         tag: String,
         parent: FlowPane,
@@ -426,12 +407,8 @@ class TagEditorDialog {
     }
 
     // Helper function to parse tags from a comma-separated string
-    private fun parseTags(tags: String): MutableSet<String> {
-        return tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
-    }
+    private fun parseTags(tags: String): MutableSet<String> = TagChipFactory.parseTags(tags)
 
     // Helper function to format tags as a comma-separated string
-    private fun formatTags(tags: Set<String>): String {
-        return tags.joinToString(", ")
-    }
+    private fun formatTags(tags: Set<String>): String = TagChipFactory.formatTags(tags)
 }

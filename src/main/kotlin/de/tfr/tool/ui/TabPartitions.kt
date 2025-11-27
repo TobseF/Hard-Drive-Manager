@@ -109,7 +109,7 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
             flow
         } else {
             // Group partitions by their tags
-            // Eine Partition kann mehrere Tags haben und erscheint in mehreren Gruppen
+            // A partition can have multiple tags and appear in multiple groups
             val byTag = mutableMapOf<String, MutableList<Pair<Disk, Partition>>>()
 
             allPartitions.forEach { (disk, partition) ->
@@ -118,11 +118,11 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
                     .filter { it.isNotEmpty() }
 
                 if (tagsForPartition.isEmpty()) {
-                    // Partition ohne Tags
+                    // Partition without tags
                     val noTagKey = I18n.s("stats.noTag")
                     byTag.getOrPut(noTagKey) { mutableListOf() }.add(disk to partition)
                 } else {
-                    // Partition für jedes Tag in die entsprechende Gruppe hinzufügen
+                    // For each tag, add the partition to the respective group
                     tagsForPartition.forEach { tag ->
                         byTag.getOrPut(tag) { mutableListOf() }.add(disk to partition)
                     }

@@ -6,7 +6,7 @@ import de.tfr.tool.de.tfr.tool.ui.theme.ThemeHelper
 import de.tfr.tool.export.CsvExporter
 import de.tfr.tool.export.PngExporter
 import de.tfr.tool.model.Disk
-import de.tfr.tool.model.Partition
+import de.tfr.tool.model.SortDirection
 import de.tfr.tool.persist.Database
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.persist.Settings
@@ -181,9 +181,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
         val ascMenuItem = RadioMenuItem(I18n.s("sort.ascending")).apply {
             toggleGroup = directionGroup
-            isSelected = currentSort.direction == de.tfr.tool.model.SortDirection.ASCENDING
+            isSelected = currentSort.direction == SortDirection.ASCENDING
             setOnAction {
-                Settings.Table.sortDirection = de.tfr.tool.model.SortDirection.ASCENDING
+                Settings.Table.sortDirection = SortDirection.ASCENDING
                 val updatedSort = de.tfr.tool.model.SortConfiguration(
                     Settings.Table.sortField,
                     Settings.Table.sortDirection
@@ -195,9 +195,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
         val descMenuItem = RadioMenuItem(I18n.s("sort.descending")).apply {
             toggleGroup = directionGroup
-            isSelected = currentSort.direction == de.tfr.tool.model.SortDirection.DESCENDING
+            isSelected = currentSort.direction == SortDirection.DESCENDING
             setOnAction {
-                Settings.Table.sortDirection = de.tfr.tool.model.SortDirection.DESCENDING
+                Settings.Table.sortDirection = SortDirection.DESCENDING
                 val updatedSort = de.tfr.tool.model.SortConfiguration(
                     Settings.Table.sortField,
                     Settings.Table.sortDirection
@@ -250,7 +250,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     }
 
     private fun updateSortMenuButton(sortMenuBtn: MenuButton, currentSort: de.tfr.tool.model.SortConfiguration) {
-        val directionIcon = if (currentSort.direction == de.tfr.tool.model.SortDirection.ASCENDING) "↑" else "↓"
+        val directionIcon = if (currentSort.direction == SortDirection.ASCENDING) "↑" else "↓"
         val fieldLabel = when (currentSort.fieldName) {
             "name" -> I18n.s("sort.name")
             "type" -> I18n.s("sort.type")
@@ -326,23 +326,21 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         return menuBar
     }
 
-    // Cards logic moved to CardsView
-
     private fun applySortingAndGrouping() {
         // Preserve the current expansion state of the disks
         val expandedDiskIds = tabTable.currentExpandedDiskIds()
 
         val list = disks.get()
-        // Wende die Sortierung hierarchisch an: Disks, dann Partitionen
+        // Apply the sort order hierarchically: first Disks, then Partitions
         applySortingToDisks(list)
 
-        // rebuild cards via CardsView
+        // Rebuild cards via CardsView
         tabCards.updateData(list, grouped = groupBox.selectionModel.selectedIndex == 1)
 
-        // rebuild partitions via PartitionsView
+        // Rebuild partitions via PartitionsView
         tabPartitions.updateData(list, grouped = groupBox.selectionModel.selectedIndex == 1)
 
-        // rebuild table data via TableView (Sortierung erfolgt dort intern)
+        // Rebuild table data via TableView (Sortierung erfolgt dort intern)
         tabTable.updateData(list)
         tabTable.setExpandedDiskIds(expandedDiskIds)
 
@@ -351,8 +349,8 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     }
 
     /**
-     * Sortiert die Disks und ihre Partitionen hierarchisch nach den Settings.
-     * Wendet die Sortierung zuerst auf die Disks an, dann auf die Partitionen jeder Disk.
+     * Sorts the disks and their partitions hierarchically, according to the settings.
+     * Applies the sorting to the disks first, then to the partitions of each disk.
      */
     private fun applySortingToDisks(disks: List<Disk>) {
         if (disks.isEmpty()) return
@@ -361,123 +359,14 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
             Settings.Table.sortField,
             Settings.Table.sortDirection
         )
-        val sortComparator = getSortComparator(currentSort.fieldName, currentSort.direction)
+        val sortComparator = SorterFactory.getSortComparator(currentSort.fieldName, currentSort.direction)
 
-        // Sortiere die Disks (es ist bereits eine MutableList)
         if (disks is MutableList) {
             disks.sortWith(sortComparator)
         }
 
-        // Sortiere die Partitionen innerhalb jeder Disk
         disks.forEach { disk ->
             disk.partitions.sortWith(sortComparator)
-        }
-    }
-
-    /**
-     * Erstellt einen Comparator für die Sortierung von Disks und Partitionen.
-     */
-    private fun getSortComparator(fieldName: String, direction: de.tfr.tool.model.SortDirection): Comparator<Any> {
-        val baseComparator = Comparator<Any> { o1, o2 ->
-            when (fieldName) {
-                "name" -> {
-                    val name1 = when (o1) {
-                        is Disk -> o1.name
-                        is Partition -> o1.name
-                        else -> ""
-                    }
-                    val name2 = when (o2) {
-                        is Disk -> o2.name
-                        is Partition -> o2.name
-                        else -> ""
-                    }
-                    name1.compareTo(name2)
-                }
-
-                "type" -> {
-                    val type1 = when (o1) {
-                        is Disk -> o1.type
-                        is Partition -> o1.type
-                        else -> ""
-                    }
-                    val type2 = when (o2) {
-                        is Disk -> o2.type
-                        is Partition -> o2.type
-                        else -> ""
-                    }
-                    type1.compareTo(type2)
-                }
-
-                "size" -> {
-                    val size1 = when (o1) {
-                        is Disk -> o1.sizeMB
-                        is Partition -> o1.sizeMB
-                        else -> 0.0
-                    }
-                    val size2 = when (o2) {
-                        is Disk -> o2.sizeMB
-                        is Partition -> o2.sizeMB
-                        else -> 0.0
-                    }
-                    size1.compareTo(size2)
-                }
-
-                "used" -> {
-                    val used1 = when (o1) {
-                        is Disk -> o1.usedMB
-                        is Partition -> o1.usedMB
-                        else -> 0.0
-                    }
-                    val used2 = when (o2) {
-                        is Disk -> o2.usedMB
-                        is Partition -> o2.usedMB
-                        else -> 0.0
-                    }
-                    used1.compareTo(used2)
-                }
-
-                "free" -> {
-                    val free1 = when (o1) {
-                        is Disk -> (o1.sizeMB - o1.usedMB).coerceAtLeast(0.0)
-                        is Partition -> (o1.sizeMB - o1.usedMB).coerceAtLeast(0.0)
-                        else -> 0.0
-                    }
-                    val free2 = when (o2) {
-                        is Disk -> (o2.sizeMB - o2.usedMB).coerceAtLeast(0.0)
-                        is Partition -> (o2.sizeMB - o2.usedMB).coerceAtLeast(0.0)
-                        else -> 0.0
-                    }
-                    free1.compareTo(free2)
-                }
-
-                "letter" -> {
-                    val letter1 = (o1 as? Partition)?.letter ?: ""
-                    val letter2 = (o2 as? Partition)?.letter ?: ""
-                    letter1.compareTo(letter2)
-                }
-
-                "tags" -> {
-                    val tags1 = when (o1) {
-                        is Disk -> o1.tag
-                        is Partition -> o1.tags
-                        else -> ""
-                    }
-                    val tags2 = when (o2) {
-                        is Disk -> o2.tag
-                        is Partition -> o2.tags
-                        else -> ""
-                    }
-                    tags1.compareTo(tags2)
-                }
-
-                else -> 0
-            }
-        }
-
-        return if (direction == de.tfr.tool.model.SortDirection.DESCENDING) {
-            baseComparator.reversed()
-        } else {
-            baseComparator
         }
     }
 
