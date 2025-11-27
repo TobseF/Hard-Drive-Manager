@@ -121,11 +121,11 @@ class TabTable(
         delBtn.setOnAction { onDeleteSelected() }
 
         expandAllBtn.tooltip = Tooltip(I18n.s("btn.expand.all"))
-        expandAllBtn.graphic = ThemeManager.currentTheme.createIcon(MaterialDesignU.UNFOLD_MORE_HORIZONTAL)
+        expandAllBtn.setIcon(MaterialDesignU.UNFOLD_MORE_HORIZONTAL)
         expandAllBtn.setOnAction { expandAll() }
 
         collapseAllBtn.tooltip = Tooltip(I18n.s("btn.collapse.all"))
-        collapseAllBtn.graphic = ThemeManager.currentTheme.createIcon(MaterialDesignU.UNFOLD_LESS_HORIZONTAL)
+        collapseAllBtn.setIcon(MaterialDesignU.UNFOLD_LESS_HORIZONTAL)
         collapseAllBtn.setOnAction { collapseAll() }
 
         toggleHidden.selectedProperty().bindBidirectional(showHiddenProp)
@@ -138,7 +138,7 @@ class TabTable(
         toggleOnlyPartitions.text = I18n.s("btn.onlyPartitions")
 
         configColumnsBtn.tooltip = Tooltip(I18n.s("table.columnVisibility.button"))
-        configColumnsBtn.graphic = ThemeManager.currentTheme.createIcon(MaterialDesignT.TABLE_SETTINGS)
+        configColumnsBtn.setIcon(MaterialDesignT.TABLE_SETTINGS)
         configColumnsBtn.setOnAction {
             val result = ColumnVisibilityDialog.show()
             if (result != null) {

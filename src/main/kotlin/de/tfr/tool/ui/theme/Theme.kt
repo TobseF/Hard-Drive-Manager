@@ -2,6 +2,7 @@ package de.tfr.tool.ui
 
 import atlantafx.base.theme.PrimerDark
 import atlantafx.base.theme.PrimerLight
+import javafx.scene.control.Labeled
 import javafx.scene.paint.Color
 import javafx.scene.paint.Color.web
 import org.kordamp.ikonli.Ikon
@@ -25,4 +26,8 @@ enum class Theme(
         iconSize = 16
         iconColor = this@Theme.fontColor
     }
+}
+
+fun Labeled.setIcon(iconCode: Ikon) {
+    ThemeManager.currentTheme.createIcon(iconCode).let { graphic = it }
 }

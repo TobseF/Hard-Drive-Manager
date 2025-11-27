@@ -6,6 +6,7 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.Theme
 import de.tfr.tool.ui.ThemeManager
+import de.tfr.tool.ui.setIcon
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -13,6 +14,8 @@ import javafx.scene.Node
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.*
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP
 
 /**
  * Dialog for editing tags for hard drives or partitions.
@@ -24,40 +27,37 @@ import javafx.scene.layout.*
  * - Allows adding new tags
  */
 class TagEditorDialog {
-    private val allDisks = DiskRepository.loadAll()
-    private val usedTags = extractAllUsedTags()
+    private var allDisks = DiskRepository.loadAll()
+    private var usedTags: MutableSet<String> = extractAllUsedTags().toMutableSet()
 
     private var currentTags: MutableSet<String> = mutableSetOf()
 
     private fun extractAllUsedTags(): Set<String> {
         val tags = mutableSetOf<String>()
         allDisks.forEach { disk ->
-            // Split disk tags like partition tags
-            disk.tag.split(",").forEach { tag ->
-                val trimmed = tag.trim()
-                if (trimmed.isNotEmpty()) {
-                    tags += trimmed
-                }
-            }
+            tags += parseTags(disk.tag)
             disk.partitions.forEach { partition ->
-                partition.tags.split(",").forEach { tag ->
-                    val trimmed = tag.trim()
-                    if (trimmed.isNotEmpty()) {
-                        tags += trimmed
-                    }
-                }
+                tags += parseTags(partition.tags)
             }
         }
         return tags
     }
 
     fun showForDisk(disk: Disk, onApply: (tags: Set<String>) -> Unit) {
-        currentTags = disk.tag.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
+        // Reload data to get latest changes
+        allDisks = DiskRepository.loadAll()
+        usedTags = extractAllUsedTags().toMutableSet()
+
+        currentTags = parseTags(disk.tag)
         showDialog(true, onApply)
     }
 
     fun showForPartition(partition: Partition, onApply: (tags: Set<String>) -> Unit) {
-        currentTags = partition.tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
+        // Reload data to get latest changes
+        allDisks = DiskRepository.loadAll()
+        usedTags = extractAllUsedTags().toMutableSet()
+
+        currentTags = parseTags(partition.tags)
         showDialog(false, onApply)
     }
 
@@ -118,6 +118,99 @@ class TagEditorDialog {
         availableTagsFlowPane.vgap = 6.0
         availableTagsFlowPane.style = "-fx-padding: 8;"
         availableTagsFlowPane.minHeight = 0.0
+
+        // Define renameTagGlobally and deleteTagGlobally FIRST, before addNewTag
+        lateinit var renameTagGlobally: (String) -> Unit
+        lateinit var deleteTagGlobally: (String) -> Unit
+        lateinit var updateAvailableTagsDisplay: () -> Unit
+
+        renameTagGlobally = { oldTag ->
+            val dialog = TextInputDialog(oldTag)
+            dialog.title = I18n.s("dialog.renameTag.title")
+            dialog.headerText = I18n.s("dialog.renameTag.message")
+            dialog.contentText = I18n.s("dialog.renameTag.prompt")
+            dialog.editor.selectAll()
+
+            val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
+            okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
+
+            val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+            if (result.isPresent) {
+                val newTag = result.get().trim()
+                if (newTag.isNotEmpty() && newTag != oldTag) {
+                    // Apply rename globally
+                    val reloadedDisks = DiskRepository.loadAll()
+                    reloadedDisks.forEach { disk ->
+                        val diskTags = parseTags(disk.tag)
+                        if (diskTags.remove(oldTag)) {
+                            diskTags.add(newTag)
+                            disk.tag = formatTags(diskTags)
+                            DiskRepository.updateDisk(disk)
+                        }
+                        disk.partitions.forEach { partition ->
+                            val tagsSet = parseTags(partition.tags)
+                            if (tagsSet.remove(oldTag)) {
+                                tagsSet.add(newTag)
+                                partition.tags = formatTags(tagsSet)
+                                DiskRepository.updatePartition(partition)
+                            }
+                        }
+                    }
+                    // Reload data after renaming
+                    allDisks = DiskRepository.loadAll()
+                    usedTags = extractAllUsedTags().toMutableSet()
+
+                    // Update local state
+                    if (currentTags.contains(oldTag)) {
+                        currentTags.remove(oldTag)
+                        currentTags.add(newTag)
+                    }
+                    updateTagsDisplay()
+                    updateAvailableTagsDisplay()
+                }
+            }
+        }
+
+        deleteTagGlobally = { tagToDelete ->
+            val confirmDialog = Alert(Alert.AlertType.CONFIRMATION)
+            confirmDialog.title = I18n.s("dialog.deleteTag.title")
+            confirmDialog.headerText = null
+            confirmDialog.contentText = I18n.s("dialog.deleteTag.message", tagToDelete)
+
+            val okButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
+            val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
+            confirmDialog.buttonTypes.setAll(okButtonType, cancelButtonType)
+
+            val dialogResult = DialogHelper.showDialog(confirmDialog, ThemeManager.currentTheme == Theme.DARK)
+            if (dialogResult.isPresent && dialogResult.get() == okButtonType) {
+                // Delete tag globally
+                val reloadedDisks = DiskRepository.loadAll()
+                reloadedDisks.forEach { disk ->
+                    val diskTags = parseTags(disk.tag)
+                    if (diskTags.remove(tagToDelete)) {
+                        disk.tag = formatTags(diskTags)
+                        DiskRepository.updateDisk(disk)
+                    }
+                    disk.partitions.forEach { partition ->
+                        val tagsSet = parseTags(partition.tags)
+                        if (tagsSet.remove(tagToDelete)) {
+                            partition.tags = formatTags(tagsSet)
+                            DiskRepository.updatePartition(partition)
+                        }
+                    }
+                }
+                // Reload data after deletion
+                allDisks = DiskRepository.loadAll()
+                usedTags = extractAllUsedTags().toMutableSet()
+
+                // Update local state
+                if (currentTags.contains(tagToDelete)) {
+                    currentTags.remove(tagToDelete)
+                    updateTagsDisplay()  // Update the UI to reflect the removal
+                }
+                updateAvailableTagsDisplay()  // Update available tags display
+            }
+        }
 
         // Section 2: Add new tag (moved to top) - NOW CAN USE availableTagsFlowPane
         val addTagBox = VBox(2.0)
@@ -191,9 +284,8 @@ class TagEditorDialog {
         addTagInputBox.children.setAll(newTagInput, addTagBtn)
         addTagBox.children.setAll(addTagLabel, addTagInputBox)
 
-
         // Populate available tags
-        val updateAvailableTagsDisplay = {
+        updateAvailableTagsDisplay = {
             availableTagsFlowPane.children.clear()
             usedTags.sorted().forEach { tag ->
                 availableTagsFlowPane.children += createAvailableTagToken(
@@ -246,7 +338,7 @@ class TagEditorDialog {
         }
 
         val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
-        if (result.isPresent && result.get() != null) {
+        if (result.isPresent) {
             onApply(result.get())
         }
     }
@@ -305,17 +397,20 @@ class TagEditorDialog {
         buttonBox.alignment = Pos.CENTER
         buttonBox.style = "-fx-padding: 2 0 0 0;"
 
-        val addBtn = Button("+")
+        val addBtn = Button()
+        addBtn.setIcon(MaterialDesignP.PLUS)
         addBtn.style = "-fx-font-size: 10px; -fx-padding: 0 4 0 4; -fx-min-width: 20; -fx-min-height: 20;"
         addBtn.tooltip = Tooltip(I18n.s("dialog.editTags.addTooltip"))
         addBtn.setOnAction { onAdd() }
 
-        val renameBtn = Button("✎")
+        val renameBtn = Button()
+        renameBtn.setIcon(MaterialDesignP.PENCIL)
         renameBtn.style = "-fx-font-size: 10px; -fx-padding: 0 4 0 4; -fx-min-width: 20; -fx-min-height: 20;"
         renameBtn.tooltip = Tooltip(I18n.s("dialog.editTags.renameTooltip"))
         renameBtn.setOnAction { onRename() }
 
-        val deleteBtn = Button("✗")
+        val deleteBtn = Button()
+        deleteBtn.setIcon(MaterialDesignD.DELETE_FOREVER_OUTLINE)
         deleteBtn.style = "-fx-font-size: 10px; -fx-padding: 0 4 0 4; -fx-min-width: 20; -fx-min-height: 20;"
         deleteBtn.tooltip = Tooltip(I18n.s("dialog.editTags.deleteTooltip"))
         deleteBtn.setOnAction {
@@ -330,80 +425,13 @@ class TagEditorDialog {
         return token
     }
 
-    private fun renameTagGlobally(oldTag: String) {
-        val dialog = TextInputDialog(oldTag)
-        dialog.title = I18n.s("dialog.renameTag.title")
-        dialog.headerText = I18n.s("dialog.renameTag.message")
-        dialog.contentText = I18n.s("dialog.renameTag.prompt")
-        dialog.editor.selectAll()
-
-        val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
-        okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
-
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
-        if (result.isPresent) {
-            val newTag = result.get().trim()
-            if (newTag.isNotEmpty() && newTag != oldTag) {
-                // Apply rename globally
-                val reloadedDisks = DiskRepository.loadAll()
-                reloadedDisks.forEach { disk ->
-                    if (disk.tag == oldTag) {
-                        disk.tag = newTag
-                        DiskRepository.updateDisk(disk)
-                    }
-                    disk.partitions.forEach { partition ->
-                        val tagsSet = partition.tags.split(",").map { it.trim() }.toMutableSet()
-                        if (tagsSet.remove(oldTag)) {
-                            tagsSet.add(newTag)
-                            partition.tags = tagsSet.joinToString(", ")
-                            DiskRepository.updatePartition(partition)
-                        }
-                    }
-                }
-                // Update local state
-                if (currentTags.contains(oldTag)) {
-                    currentTags.remove(oldTag)
-                    currentTags.add(newTag)
-                }
-                (usedTags as? MutableSet)?.remove(oldTag)
-                (usedTags as? MutableSet)?.add(newTag)
-            }
-        }
+    // Helper function to parse tags from a comma-separated string
+    private fun parseTags(tags: String): MutableSet<String> {
+        return tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
     }
 
-    private fun deleteTagGlobally(tagToDelete: String) {
-        val confirmDialog = Alert(Alert.AlertType.CONFIRMATION)
-        confirmDialog.title = I18n.s("dialog.deleteTag.title")
-        confirmDialog.headerText = null
-        confirmDialog.contentText = I18n.s("dialog.deleteTag.message", tagToDelete)
-
-        val okButtonType = ButtonType(I18n.s("btn.ok"), ButtonBar.ButtonData.OK_DONE)
-        val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
-        confirmDialog.buttonTypes.setAll(okButtonType, cancelButtonType)
-
-        val dialogResult = DialogHelper.showDialog(confirmDialog, ThemeManager.currentTheme == Theme.DARK)
-        if (dialogResult.isPresent && dialogResult.get() == okButtonType) {
-            // Delete tag globally
-            val reloadedDisks = DiskRepository.loadAll()
-            reloadedDisks.forEach { disk ->
-                if (disk.tag == tagToDelete) {
-                    disk.tag = ""
-                    DiskRepository.updateDisk(disk)
-                }
-                disk.partitions.forEach { partition ->
-                    val tagsSet = partition.tags.split(",").map { it.trim() }.toMutableSet()
-                    if (tagsSet.remove(tagToDelete)) {
-                        partition.tags = tagsSet.joinToString(", ")
-                        DiskRepository.updatePartition(partition)
-                    }
-                }
-            }
-            // Update local state
-            if (currentTags.contains(tagToDelete)) {
-                currentTags.remove(tagToDelete)
-            }
-            (usedTags as? MutableSet)?.remove(tagToDelete)
-        }
+    // Helper function to format tags as a comma-separated string
+    private fun formatTags(tags: Set<String>): String {
+        return tags.joinToString(", ")
     }
 }
-
