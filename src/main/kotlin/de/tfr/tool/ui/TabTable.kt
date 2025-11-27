@@ -860,32 +860,6 @@ class TabTable(
 
     fun refresh() = tree.refresh()
 
-    fun updateColumnVisibility(visibilityMap: Map<String, Boolean>) {
-        // Save to settings
-        Settings.Table.showName = visibilityMap["name"] ?: true
-        Settings.Table.showType = visibilityMap["type"] ?: true
-        Settings.Table.showLetter = visibilityMap["letter"] ?: true
-        Settings.Table.showSize = visibilityMap["size"] ?: true
-        Settings.Table.showUsed = visibilityMap["used"] ?: true
-        Settings.Table.showFree = visibilityMap["free"] ?: true
-        Settings.Table.showPercentText = visibilityMap["percentText"] ?: true
-        Settings.Table.showPartOfDiskBar = visibilityMap["partOfDiskBar"] ?: true
-        Settings.Table.showBar = visibilityMap["bar"] ?: true
-        Settings.Table.showTag = visibilityMap["tag"] ?: true
-        Settings.Table.showModel = visibilityMap["model"] ?: false
-        Settings.Table.showManufacturer = visibilityMap["manufacturer"] ?: false
-        Settings.Table.showSerial = visibilityMap["serial"] ?: false
-        Settings.Table.showUuid = visibilityMap["uuid"] ?: false
-        Settings.Table.showFsType = visibilityMap["fsType"] ?: false
-        Settings.Table.showEncrypted = visibilityMap["encrypted"] ?: true
-        Settings.Table.showCloud = visibilityMap["cloud"] ?: true
-        Settings.Table.showVirtual = visibilityMap["virtual"] ?: false
-        Settings.Table.showHiddenCol = visibilityMap["hidden"] ?: true
-
-        // Apply changes immediately
-        applyColumnVisibility()
-    }
-
     fun reloadColumnVisibility() {
         applyColumnVisibility()
     }
