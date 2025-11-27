@@ -6,6 +6,7 @@ import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.persist.Settings
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.settings.ColumnVisibilityDialog
+import de.tfr.tool.ui.settings.TagEditorDialog
 import de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.ui.util.TabTableNameFormatter
 import javafx.beans.property.BooleanProperty
@@ -1140,6 +1141,7 @@ class TabTable(
                 ContextMenuFactory.PartitionCallbacks(
                     onDelete = { onDeleteSelected() },
                     onRename = { showRenamePartitionDialog(value) },
+                    onEditTags = { showEditPartitionTagsDialog(value) },
                     onMove = { onMovePartition() },
                     onToggleEncrypted = { newValue ->
                         value.encrypted = newValue
@@ -1169,6 +1171,7 @@ class TabTable(
                 ContextMenuFactory.DiskCallbacks(
                     onDelete = { onDeleteSelected() },
                     onRename = { showRenameDiskDialog(value) },
+                    onEditTags = { showEditDiskTagsDialog(value) },
                     onToggleHidden = { hidden ->
                         value.hidden = hidden
                         DiskRepository.updateDisk(value)
@@ -1323,6 +1326,22 @@ class TabTable(
                 DiskRepository.updatePartition(partition)
                 onDataChanged()
             }
+        }
+    }
+
+    private fun showEditDiskTagsDialog(disk: Disk) {
+        TagEditorDialog().showForDisk(disk) { tags ->
+            disk.tag = tags.joinToString(", ")
+            DiskRepository.updateDisk(disk)
+            onDataChanged()
+        }
+    }
+
+    private fun showEditPartitionTagsDialog(partition: Partition) {
+        TagEditorDialog().showForPartition(partition) { tags ->
+            partition.tags = tags.joinToString(", ")
+            DiskRepository.updatePartition(partition)
+            onDataChanged()
         }
     }
 }

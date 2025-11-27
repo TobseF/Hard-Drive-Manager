@@ -6,6 +6,7 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
+import de.tfr.tool.ui.settings.TagEditorDialog
 import de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.ui.util.TabTableNameFormatter
 import javafx.application.Platform
@@ -107,7 +108,10 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
         } else {
             // Arrange groups vertically; inside each group the disks are placed horizontally
             val byTag = disks.filter { !it.hidden }
-                .groupBy { it.tag.ifBlank { I18n.s("stats.noTag") } }
+                .groupBy { disk ->
+                    val tags = disk.tag.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    if (tags.isEmpty()) I18n.s("stats.noTag") else tags.first()
+                }
             val root = VBox(16.0)
             root.padding = Insets(12.0)
             byTag.toSortedMap().forEach { (tag, list) ->
@@ -223,6 +227,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
             callbacks = ContextMenuFactory.DiskCallbacks(
                 onDelete = { confirmDeleteDisk(disk) },
                 onRename = { showRenameDiskDialog(disk) },
+                onEditTags = { showEditDiskTagsDialog(disk) },
                 onToggleHidden = { hidden ->
                     disk.hidden = hidden
                     DiskRepository.updateDisk(disk)
@@ -255,6 +260,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
             ContextMenuFactory.PartitionCallbacks(
                 onDelete = { PartitionActions.confirmDeletePartition(partition) { onRequestRefresh() } },
                 onRename = { showRenamePartitionDialog(partition) },
+                onEditTags = { showEditPartitionTagsDialog(partition) },
                 onMove = { PartitionActions.movePartition(partition) { onRequestRefresh() } },
                 onToggleEncrypted = { newValue ->
                     partition.encrypted = newValue
@@ -315,6 +321,22 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
                 DiskRepository.updatePartition(partition)
                 onRequestRefresh()
             }
+        }
+    }
+
+    private fun showEditDiskTagsDialog(disk: Disk) {
+        TagEditorDialog().showForDisk(disk) { tags ->
+            disk.tag = tags.joinToString(", ")
+            DiskRepository.updateDisk(disk)
+            onRequestRefresh()
+        }
+    }
+
+    private fun showEditPartitionTagsDialog(partition: Partition) {
+        TagEditorDialog().showForPartition(partition) { tags ->
+            partition.tags = tags.joinToString(", ")
+            DiskRepository.updatePartition(partition)
+            onRequestRefresh()
         }
     }
 }

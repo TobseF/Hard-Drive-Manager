@@ -6,6 +6,7 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
+import de.tfr.tool.ui.settings.TagEditorDialog
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.Node
@@ -108,11 +109,26 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
             flow
         } else {
             // Group partitions by their tags
-            val byTag = allPartitions
-                .groupBy { (_, partition) ->
-                    val tags = partition.tags.trim()
-                    if (tags.isEmpty()) I18n.s("stats.noTag") else tags
+            // Eine Partition kann mehrere Tags haben und erscheint in mehreren Gruppen
+            val byTag = mutableMapOf<String, MutableList<Pair<Disk, Partition>>>()
+
+            allPartitions.forEach { (disk, partition) ->
+                val tagsForPartition = partition.tags.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+
+                if (tagsForPartition.isEmpty()) {
+                    // Partition ohne Tags
+                    val noTagKey = I18n.s("stats.noTag")
+                    byTag.getOrPut(noTagKey) { mutableListOf() }.add(disk to partition)
+                } else {
+                    // Partition für jedes Tag in die entsprechende Gruppe hinzufügen
+                    tagsForPartition.forEach { tag ->
+                        byTag.getOrPut(tag) { mutableListOf() }.add(disk to partition)
+                    }
                 }
+            }
+
             val root = VBox(16.0)
             root.padding = Insets(12.0)
             byTag.toSortedMap().forEach { (tag, list) ->
@@ -218,6 +234,7 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
             ContextMenuFactory.PartitionCallbacks(
                 onDelete = { confirmDeletePartition(partition) },
                 onRename = { PartitionActions.renamePartition(partition) { onRequestRefresh() } },
+                onEditTags = { showEditPartitionTagsDialog(partition) },
                 onMove = { onMovePartition(partition) },
                 onToggleEncrypted = { newValue ->
                     partition.encrypted = newValue
@@ -255,5 +272,13 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
 
     private fun onMovePartition(partition: Partition) {
         PartitionActions.movePartition(partition) { onRequestRefresh() }
+    }
+
+    private fun showEditPartitionTagsDialog(partition: Partition) {
+        TagEditorDialog().showForPartition(partition) { tags ->
+            partition.tags = tags.joinToString(", ")
+            DiskRepository.updatePartition(partition)
+            onRequestRefresh()
+        }
     }
 }

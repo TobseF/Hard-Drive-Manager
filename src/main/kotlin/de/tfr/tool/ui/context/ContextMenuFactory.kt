@@ -12,12 +12,14 @@ object ContextMenuFactory {
     data class DiskCallbacks(
         val onDelete: () -> Unit,
         val onRename: () -> Unit,
+        val onEditTags: () -> Unit,
         val onToggleHidden: (Boolean) -> Unit
     )
 
     data class PartitionCallbacks(
         val onDelete: () -> Unit,
         val onRename: () -> Unit,
+        val onEditTags: () -> Unit,
         val onMove: () -> Unit,
         val onToggleEncrypted: (Boolean) -> Unit,
         val onToggleCloud: (Boolean) -> Unit,
@@ -28,6 +30,10 @@ object ContextMenuFactory {
     fun createDiskMenu(disk: Disk, callbacks: DiskCallbacks): ContextMenu {
         val renameItem = MenuItem(I18n.s("menu.context.rename")).apply {
             setOnAction { callbacks.onRename() }
+        }
+
+        val editTagsItem = MenuItem(I18n.s("menu.context.editTags")).apply {
+            setOnAction { callbacks.onEditTags() }
         }
 
         val hiddenItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
@@ -44,12 +50,16 @@ object ContextMenuFactory {
             setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(renameItem, hiddenItem, deleteItem)
+        return ContextMenu(renameItem, editTagsItem, hiddenItem, deleteItem)
     }
 
     fun createPartitionMenu(partition: Partition, callbacks: PartitionCallbacks): ContextMenu {
         val renameItem = MenuItem(I18n.s("menu.context.rename")).apply {
             setOnAction { callbacks.onRename() }
+        }
+
+        val editTagsItem = MenuItem(I18n.s("menu.context.editTags")).apply {
+            setOnAction { callbacks.onEditTags() }
         }
 
         val encryptedItem = CheckMenuItem(I18n.s("menu.context.encrypted")).apply {
@@ -104,6 +114,6 @@ object ContextMenuFactory {
             setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(renameItem, optionsMenu, moveItem, hiddenItem, deleteItem)
+        return ContextMenu(renameItem, editTagsItem, optionsMenu, moveItem, hiddenItem, deleteItem)
     }
 }
