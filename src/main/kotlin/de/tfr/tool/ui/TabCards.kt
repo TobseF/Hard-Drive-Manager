@@ -41,6 +41,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
     private var fixedCardHeightPx: Double = 220.0
 
     init {
+        id = "tabCardsContent"
         isFitToWidth = true
         hbarPolicy = ScrollBarPolicy.AS_NEEDED
         vbarPolicy = ScrollBarPolicy.AS_NEEDED

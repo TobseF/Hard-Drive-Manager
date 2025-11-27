@@ -108,6 +108,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
     private lateinit var toolbar: HBox
     private fun buildToolbar(): Node {
         toolbar = HBox(12.0)
+        toolbar.id = "toolbar"
         toolbar.alignment = Pos.CENTER_LEFT
         toolbar.padding = Insets(6.0)
         // Style is set via applyTheme()
@@ -126,6 +127,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         refresh.setOnAction { reloadFromDb() }
 
         val readInfo = Button(I18n.s("toolbar.readInfo"))
+        readInfo.id = "reloadInfoButton"
         readInfo.setOnAction {
             // Import on a background thread; disable the UI meanwhile
             toolbar.isDisable = true
@@ -264,18 +266,23 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
     private fun buildTabs(): Node {
         tabs = TabPane()
+        tabs.id = "tabsPane"
         tabs.tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
 
         val tabCards = Tab(I18n.s("tab.cards"))
+        tabCards.id = "tabCards"
         tabCards.content = this@MainView.tabCards
 
         val tabPartitions = Tab(I18n.s("tab.partitions"))
+        tabPartitions.id = "tabPartitions"
         tabPartitions.content = this@MainView.tabPartitions
 
         val tabTable = Tab(I18n.s("tab.table"))
+        tabTable.id = "tabTable"
         tabTable.content = this@MainView.tabTable
 
         val tabStats = Tab(I18n.s("tab.stats"))
+        tabStats.id = "tabStats"
         tabStats.content = tabStatistics
 
         tabs.tabs.addAll(tabCards, tabPartitions, tabTable, tabStats)
@@ -286,6 +293,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
 
     private fun buildMenuBar(): MenuBar {
         val menuBar = MenuBar()
+        menuBar.id = "menuBar"
 
         val datei = Menu(I18n.s("menu.file"))
         val exportCards = MenuItem(I18n.s("menu.file.export.cards"))
@@ -302,7 +310,9 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         datei.items.addAll(exportCards, exportTable, sep, beenden)
 
         val einstellungen = Menu(I18n.s("menu.settings"))
+        einstellungen.id = "settingsMenu"
         val openSettings = MenuItem(I18n.s("menu.settings.open"))
+        openSettings.id = "openSettingsMenuItem"
         openSettings.setOnAction { showSettingsDialog() }
         einstellungen.items.add(openSettings)
 

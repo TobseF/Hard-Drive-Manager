@@ -32,10 +32,11 @@ dependencies {
 
     // Test dependencies
     testImplementation(kotlin("test"))
-    // JUnit5 (Jupiter) für Tests
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
+    testImplementation("org.testfx:testfx-core:4.0.18")
+    testImplementation("org.testfx:testfx-junit5:4.0.18")
 }
 
 tasks.test {

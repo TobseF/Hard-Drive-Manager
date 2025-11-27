@@ -84,6 +84,8 @@ class TabTable(
     private val renameMenuItem = MenuItem()
 
     init {
+        id = "tabTableContent"
+        tree.id = "diskTableTree"
         padding = Insets(8.0)
         children += buildToolbar()
         setVgrow(buildTable(), Priority.ALWAYS)

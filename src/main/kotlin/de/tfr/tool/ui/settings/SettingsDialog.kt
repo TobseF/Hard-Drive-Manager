@@ -166,7 +166,10 @@ object SettingsDialog {
             children += listOf(lbl, pathField, btnBrowse, btnClear)
         }
 
-        val cbShowHidden = CheckBox(I18n.s("btn.showHidden")).apply { isSelected = current.showHidden }
+        val cbShowHidden = CheckBox(I18n.s("btn.showHidden")).apply {
+            id = "showHiddenCheckBox"
+            isSelected = current.showHidden
+        }
 
         var columnVisibilityChanged = false
         val btnConfigureColumns = Button(I18n.s("table.columnVisibility.button")).apply {
