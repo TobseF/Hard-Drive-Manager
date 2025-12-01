@@ -111,8 +111,6 @@ data class Disk(
 }
 
 object SampleDataRepository {
-    fun Int.terrabyte(): Double = this * 1024.0 * 1024.0
-    fun Int.gigabyte(): Double = this * 1024.0
 
     private fun parseSizeString(size: String): Double {
         val parts = size.trim().split(" ")
