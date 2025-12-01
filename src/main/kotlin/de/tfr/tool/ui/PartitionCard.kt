@@ -6,9 +6,11 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.model.formatSize
 import de.tfr.tool.model.percentOf
 import de.tfr.tool.ui.tag.TagChipFactory
+import de.tfr.tool.ui.tooltip.UsageTooltipFactory
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.Label
+import javafx.scene.control.Tooltip
 import javafx.scene.image.ImageView
 import javafx.scene.layout.*
 import javafx.scene.paint.Color
@@ -33,6 +35,7 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
 
     private var cardHovered = false
     private var currentTheme: Theme = ThemeManager.currentTheme
+    private var usageTooltip: Tooltip? = null
 
     init {
         padding = Insets(8.0)
@@ -44,6 +47,7 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         build()
         applyTheme(currentTheme)
         installHoverEffects()
+        refreshTooltip()
     }
 
     private fun build() {
@@ -198,6 +202,16 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         card.effect = if (hovered) palette.createShadow() else null
     }
 
+    private fun refreshTooltip() {
+        usageTooltip?.let {
+            Tooltip.uninstall(card, it)
+            Tooltip.uninstall(this, it)
+        }
+        usageTooltip = UsageTooltipFactory.forPartition(partition).also {
+            Tooltip.install(card, it)
+        }
+    }
+
     fun applyTheme(theme: Theme) {
         currentTheme = theme
         val palette = CardHoverPalettes.partition(theme)
@@ -222,6 +236,8 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
             sizeLabel.style = "-fx-font-size: 14px; -fx-text-fill: #d0d0d0;"
             diskNameLabel.style = "-fx-font-size: 12px; -fx-text-fill: #c0c0c0;"
             usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #b0b0b0;"
+            barBg.fill = Color.web("#5a5e60")
+            barFill.fill = Color.web("#4aa3ff")
         } else {
             card.background = Background(BackgroundFill(Color.rgb(255, 250, 229), CornerRadii(10.0), Insets.EMPTY))
             card.border = Border(
@@ -236,7 +252,10 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
             sizeLabel.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
             diskNameLabel.style = "-fx-font-size: 12px; -fx-text-fill: #666;"
             usedLabel.style = "-fx-font-size: 12px; -fx-text-fill: #555;"
+            barBg.fill = Color.web("#ffd08a")
+            barFill.fill = Color.web("#4aa3ff")
         }
+        refreshTooltip()
     }
 
     fun setEqualHeight(h: Double) {

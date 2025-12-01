@@ -1,10 +1,12 @@
 package de.tfr.tool.ui
 
 import de.tfr.tool.model.*
+import de.tfr.tool.ui.tooltip.UsageTooltipFactory
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.Label
+import javafx.scene.control.Tooltip
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.input.ContextMenuEvent
@@ -27,19 +29,23 @@ class DiskCard(val disk: Disk) : StackPane() {
     private lateinit var driveBarFill: Rectangle
     // Partition UI references so we can apply the theme live
     private data class PartViews(
+        val partition: Partition,
         val stack: StackPane,
         val partBox: VBox,
         val nameLabel: Label,
         val sizeLabel: Label,
         val barBg: Rectangle,
         val barFill: Rectangle,
-        var hovered: Boolean = false
+        var hovered: Boolean = false,
+        var tooltip: Tooltip? = null
     )
     private val parts = mutableListOf<PartViews>()
     private val partitionNodes = mutableListOf<Pair<Partition, Node>>()
 
     private var cardHovered = false
     private var currentTheme = ThemeManager.currentTheme
+    private var diskTooltip: Tooltip? = null
+    private var diskTooltipInstalled = false
 
     init {
         padding = Insets(8.0)
@@ -70,6 +76,11 @@ class DiskCard(val disk: Disk) : StackPane() {
 
     private fun applyPartitionHover(part: PartViews, hovered: Boolean) {
         part.hovered = hovered
+        if (hovered) {
+            suspendDiskTooltip()
+        } else if (parts.none { it.hovered }) {
+            resumeDiskTooltip()
+        }
         updatePartitionChrome(part, currentTheme)
     }
 
@@ -105,6 +116,37 @@ class DiskCard(val disk: Disk) : StackPane() {
             )
         )
         part.stack.effect = if (part.hovered) palette.createShadow(radius = 12.0, offsetY = 2.0, spread = 0.1) else null
+    }
+
+    private fun refreshDiskTooltip() {
+        uninstallDiskTooltip()
+        diskTooltip = UsageTooltipFactory.forDisk(disk)
+        installDiskTooltip()
+    }
+
+    private fun installDiskTooltip() {
+        if (diskTooltipInstalled) return
+        diskTooltip?.let {
+            Tooltip.install(card, it)
+            diskTooltipInstalled = true
+        }
+    }
+
+    private fun uninstallDiskTooltip() {
+        if (!diskTooltipInstalled) return
+        diskTooltip?.let { Tooltip.uninstall(card, it) }
+        diskTooltipInstalled = false
+    }
+
+    private fun suspendDiskTooltip() = uninstallDiskTooltip()
+
+    private fun resumeDiskTooltip() = installDiskTooltip()
+
+    private fun refreshPartitionTooltip(part: PartViews) {
+        part.tooltip?.let { Tooltip.uninstall(part.stack, it) }
+        part.tooltip = UsageTooltipFactory.forPartition(part.partition).also {
+            Tooltip.install(part.stack, it)
+        }
     }
 
     private fun build() {
@@ -251,7 +293,7 @@ class DiskCard(val disk: Disk) : StackPane() {
             }
 
             partsBox.children += partStack
-            val views = PartViews(partStack, partBox, name, size, barBg, barFill)
+            val views = PartViews(p, partStack, partBox, name, size, barBg, barFill)
             parts += views
         }
 
@@ -331,6 +373,7 @@ class DiskCard(val disk: Disk) : StackPane() {
                 it.sizeLabel.style = "-fx-font-size: 13px; -fx-text-fill: #d0d0d0;"
                 it.barBg.fill = Color.web("#5a5e60")
                 it.barFill.fill = Color.web("#4aa3ff")
+                refreshPartitionTooltip(it)
             }
             // Drive bar colors (dark theme)
             if (this::driveBarBg.isInitialized) {
@@ -350,6 +393,7 @@ class DiskCard(val disk: Disk) : StackPane() {
                 it.sizeLabel.style = "-fx-font-size: 13px; -fx-text-fill: #444;"
                 it.barBg.fill = Color.web("#ffd08a")
                 it.barFill.fill = Color.web("#f59e42")
+                refreshPartitionTooltip(it)
             }
             // Drive bar colors (light theme)
             if (this::driveBarBg.isInitialized) {
@@ -358,6 +402,7 @@ class DiskCard(val disk: Disk) : StackPane() {
             }
             this.style = "-fx-background-color: transparent;"
         }
+        refreshDiskTooltip()
     }
 
     /**

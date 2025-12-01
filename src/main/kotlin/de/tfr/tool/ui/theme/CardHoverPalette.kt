@@ -14,6 +14,16 @@ data class HoverPalette(
     val shadowColor: Color
 )
 
+data class TooltipPalette(
+    val background: Color,
+    val border: Color,
+    val headerText: Color,
+    val bodyText: Color,
+    val barBackground: Color,
+    val barFill: Color,
+    val barBorder: Color
+)
+
 object CardHoverPalettes {
     fun disk(theme: Theme) = when (theme) {
         Theme.DARK -> HoverPalette(
@@ -50,6 +60,28 @@ object CardHoverPalettes {
             shadowColor = Color.rgb(0, 0, 0, 0.12)
         )
     }
+
+    fun tooltip(theme: Theme) = when (theme) {
+        Theme.DARK -> TooltipPalette(
+            background = Color.web("#2b2d2f"),
+            border = Color.web("#4a4d50"),
+            headerText = Color.web("#f2f2f2"),
+            bodyText = Color.web("#d7d7d7"),
+            barBackground = Color.web("#1f2123"),
+            barFill = Color.web("#4aa3ff"),
+            barBorder = Color.web("#6a6e70")
+        )
+
+        Theme.LIGHT -> TooltipPalette(
+            background = Color.web("#ffffff"),
+            border = Color.web("#d5d5d5"),
+            headerText = Color.web("#1f1f1f"),
+            bodyText = Color.web("#333333"),
+            barBackground = Color.web("#f2f2f2"),
+            barFill = Color.web("#f59e42"),
+            barBorder = Color.web("#cfcfcf")
+        )
+    }
 }
 
 fun HoverPalette.createShadow(
@@ -61,3 +93,9 @@ fun HoverPalette.createShadow(
     this.spread = spread
 }
 
+fun Color.toCss(): String = "#" + String.format(
+    "%02x%02x%02x",
+    (red * 255).toInt().coerceIn(0, 255),
+    (green * 255).toInt().coerceIn(0, 255),
+    (blue * 255).toInt().coerceIn(0, 255)
+)
