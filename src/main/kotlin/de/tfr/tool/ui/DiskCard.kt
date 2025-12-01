@@ -27,14 +27,19 @@ class DiskCard(val disk: Disk) : StackPane() {
     private lateinit var driveBarFill: Rectangle
     // Partition UI references so we can apply the theme live
     private data class PartViews(
+        val stack: StackPane,
         val partBox: VBox,
         val nameLabel: Label,
         val sizeLabel: Label,
         val barBg: Rectangle,
-        val barFill: Rectangle
+        val barFill: Rectangle,
+        var hovered: Boolean = false
     )
     private val parts = mutableListOf<PartViews>()
     private val partitionNodes = mutableListOf<Pair<Partition, Node>>()
+
+    private var cardHovered = false
+    private var currentTheme = ThemeManager.currentTheme
 
     init {
         padding = Insets(8.0)
@@ -44,6 +49,62 @@ class DiskCard(val disk: Disk) : StackPane() {
         style = "-fx-background-color: transparent;"
 
         build()
+        applyTheme(currentTheme)
+        installHoverEffects()
+    }
+
+    private fun installHoverEffects() {
+        card.setOnMouseEntered { applyHoverState(true) }
+        card.setOnMouseExited { applyHoverState(false) }
+
+        parts.forEach { part ->
+            part.stack.setOnMouseEntered { applyPartitionHover(part, true) }
+            part.stack.setOnMouseExited { applyPartitionHover(part, false) }
+        }
+    }
+
+    private fun applyHoverState(hovered: Boolean) {
+        cardHovered = hovered
+        updateCardChrome(currentTheme)
+    }
+
+    private fun applyPartitionHover(part: PartViews, hovered: Boolean) {
+        part.hovered = hovered
+        updatePartitionChrome(part, currentTheme)
+    }
+
+    private fun updateCardChrome(theme: Theme) {
+        val palette = CardHoverPalettes.disk(theme)
+        card.background = Background(
+            BackgroundFill(
+                if (cardHovered) palette.hoverBackground else palette.baseBackground,
+                CornerRadii(10.0), Insets.EMPTY
+            )
+        )
+        card.border = Border(
+            BorderStroke(
+                if (cardHovered) palette.hoverBorder else palette.baseBorder,
+                BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)
+            )
+        )
+        card.effect = if (cardHovered) palette.createShadow() else null
+    }
+
+    private fun updatePartitionChrome(part: PartViews, theme: Theme) {
+        val palette = CardHoverPalettes.partition(theme)
+        part.partBox.background = Background(
+            BackgroundFill(
+                if (part.hovered) palette.hoverBackground else palette.baseBackground,
+                CornerRadii(6.0), Insets.EMPTY
+            )
+        )
+        part.partBox.border = Border(
+            BorderStroke(
+                if (part.hovered) palette.hoverBorder else palette.baseBorder,
+                BorderStrokeStyle.SOLID, CornerRadii(6.0), BorderWidths(1.0)
+            )
+        )
+        part.stack.effect = if (part.hovered) palette.createShadow(radius = 12.0, offsetY = 2.0, spread = 0.1) else null
     }
 
     private fun build() {
@@ -190,7 +251,8 @@ class DiskCard(val disk: Disk) : StackPane() {
             }
 
             partsBox.children += partStack
-            parts += PartViews(partBox, name, size, barBg, barFill)
+            val views = PartViews(partStack, partBox, name, size, barBg, barFill)
+            parts += views
         }
 
         card.children += partsBox
@@ -255,19 +317,16 @@ class DiskCard(val disk: Disk) : StackPane() {
     }
 
     fun applyTheme(theme: Theme) {
+        currentTheme = theme
+        updateCardChrome(theme)
         if (theme == Theme.DARK) {
-            // Card
-            card.background = Background(BackgroundFill(Color.web("#3c3f41"), CornerRadii(10.0), Insets.EMPTY))
-            card.border = Border(BorderStroke(Color.web("#55595c"), BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)))
             // Header/texts
             titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #e6e6e6;"
             sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #c8c8c8;"
             manufacturerLabel.style = "-fx-text-fill: #c0c0c0;"
             footerModel.style = "-fx-text-fill: #c0c0c0;"
-            // Partitions
             parts.forEach {
-                it.partBox.background = Background(BackgroundFill(Color.web("#4b4f51"), CornerRadii(6.0), Insets.EMPTY))
-                it.partBox.border = Border(BorderStroke(Color.web("#6a6e70"), BorderStrokeStyle.SOLID, CornerRadii(6.0), BorderWidths(1.0)))
+                updatePartitionChrome(it, theme)
                 it.nameLabel.style = "-fx-font-size: 13px; -fx-text-fill: #e8e8e8;"
                 it.sizeLabel.style = "-fx-font-size: 13px; -fx-text-fill: #d0d0d0;"
                 it.barBg.fill = Color.web("#5a5e60")
@@ -281,16 +340,12 @@ class DiskCard(val disk: Disk) : StackPane() {
             // Slightly darken the root background
             this.style = "-fx-background-color: transparent;"
         } else {
-            // Light theme (existing colors)
-            card.background = Background(BackgroundFill(Color.web("#d9d9d9"), CornerRadii(10.0), Insets.EMPTY))
-            card.border = Border(BorderStroke(Color.web("#a5a5a5"), BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)))
             titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #000000;"
             sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
             manufacturerLabel.style = "-fx-text-fill: #555; -fx-font-weight: bold;"
             footerModel.style = "-fx-text-fill: #555;"
             parts.forEach {
-                it.partBox.background = Background(BackgroundFill(Color.rgb(255, 250, 229), CornerRadii(6.0), Insets.EMPTY))
-                it.partBox.border = Border(BorderStroke(Color.rgb(234, 210, 140), BorderStrokeStyle.SOLID, CornerRadii(6.0), BorderWidths(1.0)))
+                updatePartitionChrome(it, theme)
                 it.nameLabel.style = "-fx-font-size: 13px; -fx-text-fill: #333333;"
                 it.sizeLabel.style = "-fx-font-size: 13px; -fx-text-fill: #444;"
                 it.barBg.fill = Color.web("#ffd08a")

@@ -31,6 +31,9 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
     private lateinit var barBg: Rectangle
     private lateinit var barFill: Rectangle
 
+    private var cardHovered = false
+    private var currentTheme: Theme = ThemeManager.currentTheme
+
     init {
         padding = Insets(8.0)
         children += outer
@@ -39,6 +42,8 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         style = "-fx-background-color: transparent;"
 
         build()
+        applyTheme(currentTheme)
+        installHoverEffects()
     }
 
     private fun build() {
@@ -170,7 +175,46 @@ class PartitionCard(val disk: Disk, val partition: Partition) : StackPane() {
         }
     }
 
+    private fun installHoverEffects() {
+        card.setOnMouseEntered { setHoverState(true) }
+        card.setOnMouseExited { setHoverState(false) }
+    }
+
+    private fun setHoverState(hovered: Boolean) {
+        cardHovered = hovered
+        val palette = CardHoverPalettes.partition(currentTheme)
+        card.background = Background(
+            BackgroundFill(
+                if (hovered) palette.hoverBackground else palette.baseBackground,
+                CornerRadii(10.0), Insets.EMPTY
+            )
+        )
+        card.border = Border(
+            BorderStroke(
+                if (hovered) palette.hoverBorder else palette.baseBorder,
+                BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)
+            )
+        )
+        card.effect = if (hovered) palette.createShadow() else null
+    }
+
     fun applyTheme(theme: Theme) {
+        currentTheme = theme
+        val palette = CardHoverPalettes.partition(theme)
+        card.background = Background(
+            BackgroundFill(
+                if (cardHovered) palette.hoverBackground else palette.baseBackground,
+                CornerRadii(10.0), Insets.EMPTY
+            )
+        )
+        card.border = Border(
+            BorderStroke(
+                if (cardHovered) palette.hoverBorder else palette.baseBorder,
+                BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)
+            )
+        )
+        card.effect = if (cardHovered) palette.createShadow() else null
+
         if (theme == Theme.DARK) {
             card.background = Background(BackgroundFill(Color.web("#4b4f51"), CornerRadii(10.0), Insets.EMPTY))
             card.border = Border(BorderStroke(Color.web("#6a6e70"), BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)))
