@@ -20,6 +20,7 @@ class DiskCard(val disk: Disk) : StackPane() {
     // Header/footer references
     private lateinit var titleLabel: Label
     private lateinit var sizeLabelTop: Label
+    private lateinit var manufacturerLabel: Label
     private lateinit var footerModel: Label
     // Drive usage bar (overall disk usage at the very bottom)
     private lateinit var driveBarBg: Rectangle
@@ -199,9 +200,11 @@ class DiskCard(val disk: Disk) : StackPane() {
         VBox.setVgrow(spacer, Priority.ALWAYS)
 
         val footer = VBox(2.0)
+        manufacturerLabel = Label(disk.manufacturer)
+        manufacturerLabel.style = "-fx-text-fill: #555;"
         footerModel = Label(disk.model)
         footerModel.style = "-fx-text-fill: #555;"
-        footer.children += listOf(footerModel)
+        footer.children += listOf(manufacturerLabel, footerModel)
 
         card.children += spacer
         card.children += footer
@@ -215,10 +218,10 @@ class DiskCard(val disk: Disk) : StackPane() {
         driveBar.alignment = Pos.CENTER_LEFT
         driveBar.maxWidth = Double.MAX_VALUE
 
-        driveBarBg = Rectangle(0.0, 6.0, Color.web("#ffd08a"))
+        driveBarBg = Rectangle(0.0, 2.0, Color.web("#ffd08a"))
         driveBarFill = Rectangle(0.0, 6.0, Color.web("#f59e42"))
-        driveBarBg.height = 6.0
-        driveBarFill.height = 6.0
+        driveBarBg.height = 8.0
+        driveBarFill.height = 8.0
         // Unmanaged so their preferred size does not affect the parent's preferred size
         driveBarBg.isManaged = false
         driveBarFill.isManaged = false
@@ -229,7 +232,7 @@ class DiskCard(val disk: Disk) : StackPane() {
         )
 
         driveBar.children.addAll(driveBarBg, driveBarFill)
-        VBox.setMargin(driveBar, Insets(8.0, 0.0, 0.0, 0.0))
+        VBox.setMargin(driveBar, Insets(-8.0, 0.0, 6.0, 0.0))
 
         // Place the drive bar at the very bottom of the card (below footer)
         card.children += driveBar
@@ -259,6 +262,7 @@ class DiskCard(val disk: Disk) : StackPane() {
             // Header/texts
             titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #e6e6e6;"
             sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #c8c8c8;"
+            manufacturerLabel.style = "-fx-text-fill: #c0c0c0;"
             footerModel.style = "-fx-text-fill: #c0c0c0;"
             // Partitions
             parts.forEach {
@@ -282,6 +286,7 @@ class DiskCard(val disk: Disk) : StackPane() {
             card.border = Border(BorderStroke(Color.web("#a5a5a5"), BorderStrokeStyle.SOLID, CornerRadii(10.0), BorderWidths(2.0)))
             titleLabel.style = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #000000;"
             sizeLabelTop.style = "-fx-font-size: 14px; -fx-text-fill: #444;"
+            manufacturerLabel.style = "-fx-text-fill: #555; -fx-font-weight: bold;"
             footerModel.style = "-fx-text-fill: #555;"
             parts.forEach {
                 it.partBox.background = Background(BackgroundFill(Color.rgb(255, 250, 229), CornerRadii(6.0), Insets.EMPTY))
