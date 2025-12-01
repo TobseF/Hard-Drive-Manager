@@ -37,10 +37,18 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
     testImplementation("org.testfx:testfx-core:4.0.18")
     testImplementation("org.testfx:testfx-junit5:4.0.18")
+    testImplementation("org.testfx:openjfx-monocle:21.0.2")
 }
 
 tasks.test {
     useJUnitPlatform()
+    // Headless TestFX configuration so UI tests run in CI (Monocle/Glass)
+    systemProperty("java.awt.headless", "true")
+    systemProperty("testfx.robot", "glass")
+    systemProperty("testfx.headless", "true")
+    systemProperty("glass.platform", "Monocle")
+    systemProperty("monocle.platform", "Headless")
+    systemProperty("prism.order", "sw")
 }
 
 kotlin {
@@ -62,4 +70,3 @@ javafx {
     version = "25.0.1"
     modules = listOf("javafx.controls", "javafx.graphics", "javafx.swing")
 }
-
