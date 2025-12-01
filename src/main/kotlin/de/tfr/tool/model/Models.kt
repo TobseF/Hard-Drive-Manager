@@ -6,7 +6,7 @@ import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.SimpleLongProperty
 import javafx.beans.property.SimpleStringProperty
 
-enum class DiskType { SSD, HD }
+enum class DiskType(val label: String) { SSD("SSD"), HD("HD"), M2("M.2") }
 enum class PartitionType { Partition, EncryptedContainer }
 enum class DisplayUnit {
     TB, GB, MB;
@@ -111,54 +111,187 @@ data class Disk(
 }
 
 object SampleDataRepository {
+    fun Int.terrabyte(): Double = this * 1024.0 * 1024.0
+    fun Int.gigabyte(): Double = this * 1024.0
+
+    private fun parseSizeString(size: String): Double {
+        val parts = size.trim().split(" ")
+        val value = parts[0].toDoubleOrNull() ?: 0.0
+        val unit = parts.getOrNull(1)?.uppercase() ?: "MB"
+
+        return when (unit) {
+            "TB" -> value * 1024.0 * 1024.0
+            "GB" -> value * 1024.0
+            "MB" -> value
+            else -> value
+        }
+    }
+
+    private fun parseDiskType(type: String): String {
+        return when {
+            type.contains("M.2", ignoreCase = true) -> DiskType.M2.label
+            type.contains("SSD", ignoreCase = true) -> DiskType.SSD.label
+            type.contains("HDD", ignoreCase = true) -> DiskType.HD.label
+            else -> DiskType.HD.label
+        }
+    }
+
     fun sampleDisks(): MutableList<Disk> = mutableListOf(
+        // Disk 1: Samsung 980 PRO System
         Disk().apply {
-            name = "1 TB SSD"
-            sizeMB = 1.0 * 1024
-            type = DiskType.SSD.name
-            model = "SanDisk SDSSD..."
-            tag = "Ultrabook"
+            id = 1L
+            name = "980 PRO System"
+            manufacturer = "Samsung"
+            sizeMB = parseSizeString("1 TB")
+            type = parseDiskType("SSD (M.2 NVMe)")
+            model = "MZ-V8P1T0BW"
+            serial = "S5GXNX0T821493K"
             partitions += Partition().apply {
-                name = "C: Win"; letter = "C"; type = PartitionType.Partition.name
-                sizeMB = 0.9 * 1024; usedMB = 0.45 * 1024
+                id = 1L; diskId = 1L
+                name = "EFI System"; letter = ""
+                sizeMB = parseSizeString("100 MB"); usedMB = parseSizeString("45 MB")
+                fsType = "FAT32"; type = PartitionType.Partition.name
+                hidden = true; virtual = false; encrypted = false; cloudBackup = false
+                tags = "System, Hidden"
+            }
+            partitions += Partition().apply {
+                id = 2L; diskId = 1L
+                name = "Windows"; letter = "C"
+                sizeMB = parseSizeString("900 GB"); usedMB = parseSizeString("420 GB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = true; cloudBackup = false
+                tags = "OS, Programme, Critical"
+            }
+            partitions += Partition().apply {
+                id = 3L; diskId = 1L
+                name = "WinRE"; letter = ""
+                sizeMB = parseSizeString("900 MB"); usedMB = parseSizeString("650 MB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = false; cloudBackup = false
+                tags = "Recovery, System"
             }
         },
+        // Disk 2: Western Digital WD_BLACK SN850X
         Disk().apply {
-            name = "8 TB HD"; sizeMB = 8.0 * 1024; type = DiskType.HD.name; model = "Seagate ..."; tag = "NAS"
+            id = 2L
+            name = "WD_BLACK SN850X"
+            manufacturer = "Western Digital"
+            sizeMB = parseSizeString("2 TB")
+            type = parseDiskType("SSD (M.2 NVMe)")
+            model = "WDS200T2X0E"
+            serial = "22453G804511"
             partitions += Partition().apply {
-                name = "D: Eigenes"; letter = "D"; sizeMB = 2.88 * 1024; usedMB = 1.5 * 1024
-            }
-            partitions += Partition().apply {
-                name = "H: Data"; letter = "H"; sizeMB = 3.18 * 1024; usedMB = 2.3 * 1024
-            }
-            partitions += Partition().apply {
-                name = "G: Install"; letter = "G"; sizeMB = 1.2 * 1024; usedMB = 0.6 * 1024
+                id = 4L; diskId = 2L
+                name = "Games Library"; letter = "G"
+                sizeMB = parseSizeString("2 TB"); usedMB = parseSizeString("1.4 TB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = false; cloudBackup = false
+                tags = "Steam, Epic Games, High Performance"
             }
         },
+        // Disk 3: Seagate IronWolf Pro
         Disk().apply {
-            name = "10 TB HD"; sizeMB = 10.0 * 1024; type = DiskType.HD.name; model = "Seagate ..."; tag = "Media"
+            id = 3L
+            name = "IronWolf Pro"
+            manufacturer = "Seagate"
+            sizeMB = parseSizeString("8 TB")
+            type = parseDiskType("HDD (SATA)")
+            model = "ST8000NE001"
+            serial = "Z305X6A9"
             partitions += Partition().apply {
-                name = "M: Movie"; letter = "M"; sizeMB = 9.09 * 1024; usedMB = 6.2 * 1024; type =
-                PartitionType.EncryptedContainer.name
+                id = 5L; diskId = 3L
+                name = "Movies & TV"; letter = "M"
+                sizeMB = parseSizeString("6 TB"); usedMB = parseSizeString("4.2 TB")
+                fsType = "exFAT"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = false; cloudBackup = false
+                tags = "Plex, Medien, 4K Video"
+            }
+            partitions += Partition().apply {
+                id = 6L; diskId = 3L
+                name = "Music Archive"; letter = "A"
+                sizeMB = parseSizeString("2 TB"); usedMB = parseSizeString("800 GB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = false; cloudBackup = true
+                tags = "FLAC, MP3, Archiv"
             }
         },
+        // Disk 4: Kingston KC3000 Dev
         Disk().apply {
-            name = "8 TB HD"; sizeMB = 8.0 * 1024; type = DiskType.HD.name; model = "Archive"; tag = "Archive"
+            id = 4L
+            name = "KC3000 Dev"
+            manufacturer = "Kingston"
+            sizeMB = parseSizeString("2 TB")
+            type = parseDiskType("SSD (M.2 NVMe)")
+            model = "SKC3000D/2048G"
+            serial = "50026B7685D0C1A2"
             partitions += Partition().apply {
-                name = "X: Stuff"; letter = "X"; sizeMB = 7.27 * 1024; usedMB = 4.26 * 1024
+                id = 7L; diskId = 4L
+                name = "Repositories"; letter = "D"
+                sizeMB = parseSizeString("500 GB"); usedMB = parseSizeString("120 GB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = true; cloudBackup = false
+                tags = "Git, Work, Source Code"
             }
-            partitions += Partition().apply { name = "Movie 2"; sizeMB = 0.5 * 1024; usedMB = 0.48 * 1024 }
-            partitions += Partition().apply { name = "XXX"; sizeMB = 3.5 * 1024; usedMB = 3.2 * 1024 }
-            partitions += Partition().apply { name = "Steam"; sizeMB = 0.26 * 1024; usedMB = 0.2 * 1024 }
+            partitions += Partition().apply {
+                id = 8L; diskId = 4L
+                name = "AI Training Data"; letter = "X"
+                sizeMB = parseSizeString("1 TB"); usedMB = parseSizeString("850 GB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = false; cloudBackup = false
+                tags = "PyTorch, Datasets, LLM, No Backup"
+            }
+            partitions += Partition().apply {
+                id = 9L; diskId = 4L
+                name = "WSL_VirtualDisk"; letter = ""
+                sizeMB = parseSizeString("500 GB"); usedMB = parseSizeString("200 GB")
+                fsType = "EXT4"; type = PartitionType.Partition.name
+                hidden = false; virtual = true; encrypted = false; cloudBackup = false
+                tags = "Linux, Ubuntu, Docker"
+            }
         },
+        // Disk 5: Western Digital WD Blue Archive
         Disk().apply {
-            name = "4 TB HD"; sizeMB = 4.0 * 1024; type = DiskType.HD.name; model = "WD ..."; tag = "Games"
+            id = 5L
+            name = "WD Blue Archive"
+            manufacturer = "Western Digital"
+            sizeMB = parseSizeString("4 TB")
+            type = parseDiskType("HDD (SATA)")
+            model = "WD40EZAZ"
+            serial = "WCC4M1SX9L2P"
             partitions += Partition().apply {
-                name = "I: Stuff"; letter = "I"; sizeMB = 3.63 * 1024; usedMB = 1.6 * 1024
+                id = 10L; diskId = 5L
+                name = "Cold Storage"; letter = "B"
+                sizeMB = parseSizeString("4 TB"); usedMB = parseSizeString("3.1 TB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = true; cloudBackup = true
+                tags = "Backup, Veeam, Encrypted, Offsite Copy"
             }
-            partitions += Partition().apply { name = "Outsourc."; sizeMB = 2.0 * 1024; usedMB = 1.5 * 1024 }
-            partitions += Partition().apply { name = "Progs"; sizeMB = 0.8 * 1024; usedMB = 0.5 * 1024 }
-            partitions += Partition().apply { name = "Games"; sizeMB = 0.5 * 1024; usedMB = 0.4 * 1024 }
+        },
+        // Disk 6: Crucial MX500 Scratch
+        Disk().apply {
+            id = 6L
+            name = "MX500 Scratch"
+            manufacturer = "Crucial"
+            sizeMB = parseSizeString("500 GB")
+            type = parseDiskType("SSD (SATA)")
+            model = "CT500MX500SSD1"
+            serial = "2138E5482910"
+            partitions += Partition().apply {
+                id = 11L; diskId = 6L
+                name = "Scratch Disk"; letter = "T"
+                sizeMB = parseSizeString("250 GB"); usedMB = parseSizeString("10 GB")
+                fsType = "exFAT"; type = PartitionType.Partition.name
+                hidden = false; virtual = false; encrypted = false; cloudBackup = false
+                tags = "Temp, Adobe Cache, Trash"
+            }
+            partitions += Partition().apply {
+                id = 12L; diskId = 6L
+                name = "VM Playground"; letter = "V"
+                sizeMB = parseSizeString("250 GB"); usedMB = parseSizeString("180 GB")
+                fsType = "NTFS"; type = PartitionType.Partition.name
+                hidden = false; virtual = true; encrypted = false; cloudBackup = false
+                tags = "VirtualBox, Sandbox, Testing"
+            }
         }
     )
 }
@@ -185,4 +318,3 @@ fun Double.formatSize(): String {
 }
 
 fun Double.percentOf(total: Double): Double = if (total <= 0.0) 0.0 else (this / total).coerceIn(0.0, 1.0)
-
