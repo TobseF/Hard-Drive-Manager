@@ -1,6 +1,22 @@
-# Hard Drive Manager
+<p align="center">
+    <picture>
+      <source srcset="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/hard-drive-manager-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/hard-drive-manager-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/hard-drive-manager-logo.svg" alt="HARD DRIVE MANAGER logo" height="64">
+    </picture>
+</p>
 
-An elegant desktop app to inventory, explore, and manage your storage devices. Built with Kotlin and JavaFX, Hard Drive Manager gives you a clear overview of disks and partitions, insightful charts, and handy export options — all in a fast, modern UI.
+<p align="center">
+  <a href="https://jdk.java.net/25/"><img alt="Java 25" src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/badge-java-25.svg" height="20" /></a>
+  <a href="https://kotlinlang.org/docs/whatsnew22.html"><img alt="Kotlin 2.2.0" src="https://img.shields.io/badge/Kotlin-2.2.20-7F52FF.svg?style=flat-square&logo=Kotlin&logoColor=white" /></a>
+  <a href="https://github.com/TobseF/Hard-Drive-Manager/actions/workflows/gradle-tests.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/TobseF/Hard-Drive-Manager/gradle-tests.yml?style=flat-square&branch=main" /></a>
+</p>
+
+An elegant desktop app to inventory, explore, and manage your storage devices.
+Built with Kotlin and JavaFX, Hard Drive Manager gives you a clear overview of disks and partitions,
+insightful charts, and handy export options — all in a fast, modern UI.
+
+> 💡 This project is build in vibe-coding using AI coding models.
 
 ## Highlights at a glance
 
@@ -19,23 +35,21 @@ An elegant desktop app to inventory, explore, and manage your storage devices. B
 - Settings dialog with live theme preview and options:
   - Light/Dark theme
   - Language: English or German
-  - Toggle equal card heights or fixed card height in pixels
-  - Show/Hide hidden items
   - Choose a custom database file path
 
-## Screenshots
+## 🖼️ Screenshots
 
-Card overview
+### Hard drive overview
 
-![Overview](docs/screenshot-overview.png)
+![Overview](https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/screenshot_1.png)
 
-Table / Tree Table view
+### Partition overview
 
-![Table](docs/screenshot-table.png)
+![Table](https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/screenshot_2.png)
 
-Statistics & charts
+## Table view
 
-![Charts](docs/screenshot-charts.png)
+![Charts](https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/screenshot_3.png)
 
 ## Getting started
 
