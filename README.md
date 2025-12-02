@@ -7,7 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://jdk.java.net/25/"><img alt="Java 25" src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/badge-java-25.svg" height="20" /></a>
+  <a href="https://jdk.java.net/23/"><img alt="Java 23" src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/badge-java-23.svg" height="20" /></a>
+  <a href="https://openjfx.io"><img alt="Java FX 25" src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/badge-java-fx-25.svg" height="20" /></a>
   <a href="https://kotlinlang.org/docs/whatsnew22.html"><img alt="Kotlin 2.2.0" src="https://img.shields.io/badge/Kotlin-2.2.20-7F52FF.svg?style=flat-square&logo=Kotlin&logoColor=white" /></a>
   <a href="https://github.com/TobseF/Hard-Drive-Manager/actions/workflows/gradle-tests.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/TobseF/Hard-Drive-Manager/gradle-tests.yml?style=flat-square&branch=main" /></a>
 </p>
@@ -18,7 +19,7 @@ insightful charts, and handy export options — all in a fast, modern UI.
 
 > 💡 This project is build in vibe-coding using AI coding models.
 
-## Highlights at a glance
+## ⭐ Highlights at a glance
 
 - Beautiful, responsive JavaFX UI with light and dark themes
 - Two complementary views:
@@ -111,12 +112,16 @@ You might also see a terminal deprecation warning from the JavaFX Marlin rasteri
 
 This VM option is already applied when running via Gradle (see `build.gradle.kts`). If you run from your IDE, add it to your Run Configuration alongside the native‑access flags. The warning should then disappear. Future OpenJFX releases may remove the need for this flag.
 
-### Build
+### 🔨 Build
 
 ```
 ./gradlew build
 ```
 
+### 💿 Create installer
+
+```bash
+./gradlew packageInstaller
 Artifacts will be placed under `build/`. You can also run tests (if present) with:
 
 ```

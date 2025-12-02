@@ -2,10 +2,11 @@ plugins {
     kotlin("jvm") version "2.3.0-Beta2"
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
+    id("org.beryx.runtime") version "1.13.1"
 }
 
 group = "de.tfr.tool"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -52,7 +53,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(23)
 }
 
 application {
@@ -66,7 +67,41 @@ application {
     )
 }
 
+val fxModules = listOf("javafx.controls", "javafx.graphics", "javafx.swing")
+val runtimeModules =
+    (listOf("java.base", "java.sql", "java.desktop", "java.logging", "jdk.unsupported") + fxModules).toMutableList()
+
 javafx {
     version = "25.0.1"
-    modules = listOf("javafx.controls", "javafx.graphics", "javafx.swing")
+    modules = fxModules
+}
+
+runtime {
+    modules.set(runtimeModules)
+    options.set(listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages"))
+
+    launcher {
+        noConsole = true
+        jvmArgs = application.applicationDefaultJvmArgs.toMutableList()
+    }
+    jpackage {
+        imageName = "Hard Drive Manager"
+        appVersion = version.toString()
+        imageOptions = listOf("--icon", "src/main/resources/icon.ico")
+        installerType = "msi"
+        installerOptions = listOf(
+            "--win-menu",
+            "--win-shortcut",
+            "--vendor",
+            "TobseF",
+            "--description",
+            "Inventory explore, and manage your storage devices like a pro!"
+        )
+    }
+}
+
+tasks.register("packageInstaller") {
+    dependsOn(tasks.named("jpackage"))
+    group = "distribution"
+    description = "Erzeugt einen Plattform-Installer mit eingebetteter JRE."
 }
