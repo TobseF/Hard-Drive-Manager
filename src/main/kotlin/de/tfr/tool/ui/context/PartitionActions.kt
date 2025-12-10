@@ -5,8 +5,6 @@ import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.model.formatSize
 import de.tfr.tool.persist.DiskRepository
-import de.tfr.tool.ui.Theme
-import de.tfr.tool.ui.ThemeManager
 import de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.ui.util.TabTableNameFormatter
 import javafx.geometry.Insets
@@ -25,7 +23,7 @@ object PartitionActions {
         val cancelButton = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
         alert.buttonTypes.setAll(confirmButton, cancelButton)
 
-        val result = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(alert)
         if (result.isPresent && result.get() == confirmButton) {
             DiskRepository.deletePartition(partition.id)
             onRefresh()
@@ -79,7 +77,7 @@ object PartitionActions {
             if (buttonType == okButtonType) diskCombo.value else null
         }
 
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val targetDisk = result.get()
             if (targetDisk.id != partition.diskId) {
@@ -94,13 +92,13 @@ object PartitionActions {
                     successAlert.title = I18n.s("alert.move.partition.title")
                     successAlert.headerText = null
                     successAlert.contentText = I18n.s("alert.move.partition.success", partitionName, targetDiskName)
-                    DialogHelper.showDialog(successAlert, ThemeManager.currentTheme == Theme.DARK)
+                    DialogHelper.showDialog(successAlert)
                 } catch (e: Exception) {
                     val errorAlert = Alert(Alert.AlertType.ERROR)
                     errorAlert.title = I18n.s("alert.move.partition.title")
                     errorAlert.headerText = null
                     errorAlert.contentText = I18n.s("alert.move.partition.error", e.message ?: "Unknown error")
-                    DialogHelper.showDialog(errorAlert, ThemeManager.currentTheme == Theme.DARK)
+                    DialogHelper.showDialog(errorAlert)
                 }
             }
         }
@@ -114,7 +112,7 @@ object PartitionActions {
         dialog.editor.textFormatter = TabTableNameFormatter.create()
         val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
         okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val newName = result.get().trim()
             if (newName.isNotEmpty() && newName != partition.name) {

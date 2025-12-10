@@ -86,8 +86,7 @@ class SystemInfoDialog : Dialog<ButtonType>(){
                 content.putString(text)
                 clipboard.setContent(content)
                 DialogHelper.showDialog(
-                    Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied")),
-                    ThemeManager.currentTheme == Theme.DARK
+                    Alert(AlertType.INFORMATION, I18n.s("dialog.sysinfo.copied"))
                 )
             }
 
@@ -111,7 +110,7 @@ class SystemInfoDialog : Dialog<ButtonType>(){
 
     fun showDialog(): Optional<ButtonType> {
         DialogHelper.setWindowIcon(dialogPane, "info.png")
-        return DialogHelper.showDialog(this, ThemeManager.currentTheme == Theme.DARK)
+        return DialogHelper.showDialog(this)
     }
 
     class SystemInfo(val osName: String, val osVersion: String, val osArch: String, val javaVersion: String, val javafxVersion: String)

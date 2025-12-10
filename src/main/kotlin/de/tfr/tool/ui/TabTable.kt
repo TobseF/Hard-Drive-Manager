@@ -5,6 +5,7 @@ import de.tfr.tool.model.*
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.persist.Settings
 import de.tfr.tool.ui.context.ContextMenuFactory
+import de.tfr.tool.ui.dialog.SizeEditorDialog
 import de.tfr.tool.ui.settings.ColumnVisibilityDialog
 import de.tfr.tool.ui.settings.TagEditorDialog
 import de.tfr.tool.ui.util.DialogHelper
@@ -1020,7 +1021,7 @@ class TabTable(
         val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
         alert.buttonTypes.setAll(confirmButtonType, cancelButtonType)
 
-        val res = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
+        val res = DialogHelper.showDialog(alert)
         if (res.isPresent && res.get() == confirmButtonType) {
             when (v) {
                 is Disk -> DiskRepository.deleteDisk(v.id)
@@ -1140,6 +1141,7 @@ class TabTable(
                     onDelete = { onDeleteSelected() },
                     onRename = { showRenamePartitionDialog(value) },
                     onEditTags = { showEditPartitionTagsDialog(value) },
+                    onEditSize = { showEditSizeDialog(value) },
                     onMove = { onMovePartition() },
                     onToggleEncrypted = { newValue ->
                         value.encrypted = newValue
@@ -1182,6 +1184,7 @@ class TabTable(
                     onDelete = { onDeleteSelected() },
                     onRename = { showRenameDiskDialog(value) },
                     onEditTags = { showEditDiskTagsDialog(value) },
+                    onEditSize = { showEditSizeDialog(value) },
                     onToggleHidden = { hidden ->
                         value.hidden = hidden
                         DiskRepository.updateDisk(value)
@@ -1266,7 +1269,7 @@ class TabTable(
         }
 
         // Show dialog and process result
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val targetDisk = result.get()
             if (targetDisk.id != partition.diskId) {
@@ -1289,14 +1292,14 @@ class TabTable(
                     successAlert.title = I18n.s("alert.move.partition.title")
                     successAlert.headerText = null
                     successAlert.contentText = I18n.s("alert.move.partition.success", partitionName, targetDiskName)
-                    DialogHelper.showDialog(successAlert, ThemeManager.currentTheme == Theme.DARK)
+                    DialogHelper.showDialog(successAlert)
                 } catch (e: Exception) {
                     logger.error(e) { "Failed to move partition to disk $targetDisk" }
                     val errorAlert = Alert(Alert.AlertType.ERROR)
                     errorAlert.title = I18n.s("alert.move.partition.title")
                     errorAlert.headerText = null
                     errorAlert.contentText = I18n.s("alert.move.partition.error", e.message ?: "Unknown error")
-                    DialogHelper.showDialog(errorAlert, ThemeManager.currentTheme == Theme.DARK)
+                    DialogHelper.showDialog(errorAlert)
                 }
             }
         }
@@ -1319,7 +1322,7 @@ class TabTable(
         val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
         okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
 
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val newName = result.get().trim()
             if (newName.isNotEmpty() && newName != disk.name) {
@@ -1340,7 +1343,7 @@ class TabTable(
         val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
         okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
 
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val newName = result.get().trim()
             if (newName.isNotEmpty() && newName != partition.name) {
@@ -1364,6 +1367,40 @@ class TabTable(
             partition.tags = tags.joinToString(", ")
             DiskRepository.updatePartition(partition)
             onDataChanged()
+        }
+    }
+
+    private fun showEditSizeDialog(item: Any) {
+        when (item) {
+            is Disk -> {
+                val dialog = SizeEditorDialog(
+                    title = I18n.s("dialog.size.title.disk", item.name),
+                    initialSizeMB = item.sizeMB,
+                    initialUsedMB = item.usedMB
+                )
+                val result = DialogHelper.showDialog(dialog)
+                result.ifPresent { (newSize, _) ->
+                    // For disks, only adjust the total size; usedMB is derived from that.
+                    item.sizeMB = newSize
+                    DiskRepository.updateDisk(item)
+                    onDataChanged()
+                }
+            }
+
+            is Partition -> {
+                val dialog = SizeEditorDialog(
+                    title = I18n.s("dialog.size.title.partition", item.name),
+                    initialSizeMB = item.sizeMB,
+                    initialUsedMB = item.usedMB
+                )
+                val result = DialogHelper.showDialog(dialog)
+                result.ifPresent { (newSize, newUsed) ->
+                    item.sizeMB = newSize
+                    item.usedMB = newUsed
+                    DiskRepository.updatePartition(item)
+                    onDataChanged()
+                }
+            }
         }
     }
 }

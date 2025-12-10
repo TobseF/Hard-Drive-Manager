@@ -27,7 +27,7 @@ object DialogHelper {
      * Shows a Dialog with correct dark mode title bar.
      * Returns the result of showAndWait().
      */
-    fun <R> showDialog(dialog: Dialog<R>, isDark: Boolean): Optional<R> {
+    fun <R> showDialog(dialog: Dialog<R>, isDark: Boolean = ThemeManager.currentTheme == Theme.DARK): Optional<R> {
         // Apply dark mode immediately after showing
         Platform.runLater {
             val window = dialog.dialogPane.scene?.window
@@ -103,7 +103,7 @@ object DialogHelper {
         textArea.textProperty().addListener { _, _, _ -> validateInput() }
         validateInput()
         dialog.setResultConverter { button -> if (button == okButton) textArea.text.trim() else null }
-        val result = showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = showDialog(dialog)
         return if (result.isPresent) result.get() else null
     }
 }

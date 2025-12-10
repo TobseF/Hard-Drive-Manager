@@ -4,8 +4,6 @@ import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
 import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
-import de.tfr.tool.ui.Theme
-import de.tfr.tool.ui.ThemeManager
 import de.tfr.tool.ui.setIcon
 import de.tfr.tool.ui.tag.TagChipFactory
 import de.tfr.tool.ui.util.DialogHelper
@@ -139,7 +137,7 @@ class TagEditorDialog {
             val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
             okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
 
-            val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+            val result = DialogHelper.showDialog(dialog)
             if (result.isPresent) {
                 val newTag = result.get().trim()
                 if (newTag.isNotEmpty() && newTag != oldTag) {
@@ -186,7 +184,7 @@ class TagEditorDialog {
             val cancelButtonType = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
             confirmDialog.buttonTypes.setAll(okButtonType, cancelButtonType)
 
-            val dialogResult = DialogHelper.showDialog(confirmDialog, ThemeManager.currentTheme == Theme.DARK)
+            val dialogResult = DialogHelper.showDialog(confirmDialog)
             if (dialogResult.isPresent && dialogResult.get() == okButtonType) {
                 // Delete tag globally
                 val reloadedDisks = DiskRepository.loadAll()
@@ -342,7 +340,7 @@ class TagEditorDialog {
             if (buttonType == okButtonType) currentTags else null
         }
 
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             onApply(result.get())
         }

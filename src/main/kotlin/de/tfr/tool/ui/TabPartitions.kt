@@ -6,6 +6,7 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
+import de.tfr.tool.ui.dialog.SizeEditorDialog
 import de.tfr.tool.ui.settings.TagEditorDialog
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.application.Platform
@@ -236,6 +237,7 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
                 onDelete = { confirmDeletePartition(partition) },
                 onRename = { PartitionActions.renamePartition(partition) { onRequestRefresh() } },
                 onEditTags = { showEditPartitionTagsDialog(partition) },
+                onEditSize = { showEditSizeDialog(partition) },
                 onMove = { onMovePartition(partition) },
                 onToggleEncrypted = { newValue ->
                     partition.encrypted = newValue
@@ -290,6 +292,21 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
     private fun showEditPartitionTagsDialog(partition: Partition) {
         TagEditorDialog().showForPartition(partition) { tags ->
             partition.tags = tags.joinToString(", ")
+            DiskRepository.updatePartition(partition)
+            onRequestRefresh()
+        }
+    }
+
+    private fun showEditSizeDialog(partition: Partition) {
+        val dialog = SizeEditorDialog(
+            title = I18n.s("dialog.size.title.partition", partition.name),
+            initialSizeMB = partition.sizeMB,
+            initialUsedMB = partition.usedMB
+        )
+        val result = DialogHelper.showDialog(dialog)
+        result.ifPresent { (newSize, newUsed) ->
+            partition.sizeMB = newSize
+            partition.usedMB = newUsed
             DiskRepository.updatePartition(partition)
             onRequestRefresh()
         }

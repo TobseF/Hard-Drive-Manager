@@ -5,8 +5,6 @@ import de.tfr.tool.model.Disk
 import de.tfr.tool.model.Partition
 import de.tfr.tool.model.formatSize
 import de.tfr.tool.model.percentOf
-import de.tfr.tool.ui.Theme
-import de.tfr.tool.ui.ThemeManager
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.scene.control.Alert
 import javafx.scene.control.Alert.AlertType
@@ -98,13 +96,11 @@ object CsvExporter {
         try {
             file.writeText(lines.joinToString(System.lineSeparator()), Charsets.UTF_8)
             DialogHelper.showDialog(
-                Alert(AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)),
-                ThemeManager.currentTheme == Theme.DARK
+                Alert(AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath))
             )
         } catch (ex: Exception) {
             DialogHelper.showDialog(
-                Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
-                ThemeManager.currentTheme == Theme.DARK
+                Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: ""))
             )
         }
     }

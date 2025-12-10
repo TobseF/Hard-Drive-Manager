@@ -13,6 +13,7 @@ object ContextMenuFactory {
         val onDelete: () -> Unit,
         val onRename: () -> Unit,
         val onEditTags: () -> Unit,
+        val onEditSize: () -> Unit,
         val onToggleHidden: (Boolean) -> Unit,
         val onEditComment: () -> Unit
     )
@@ -21,6 +22,7 @@ object ContextMenuFactory {
         val onDelete: () -> Unit,
         val onRename: () -> Unit,
         val onEditTags: () -> Unit,
+        val onEditSize: () -> Unit,
         val onMove: () -> Unit,
         val onToggleEncrypted: (Boolean) -> Unit,
         val onToggleCloud: (Boolean) -> Unit,
@@ -36,6 +38,10 @@ object ContextMenuFactory {
 
         val editTagsItem = MenuItem(I18n.s("menu.context.editTags")).apply {
             setOnAction { callbacks.onEditTags() }
+        }
+
+        val editSizeItem = MenuItem(I18n.s("menu.context.editSize")).apply {
+            setOnAction { callbacks.onEditSize() }
         }
 
         val editCommentItem = MenuItem(I18n.s("menu.context.editComment")).apply {
@@ -56,7 +62,7 @@ object ContextMenuFactory {
             setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(renameItem, editTagsItem, editCommentItem, hiddenItem, deleteItem)
+        return ContextMenu(renameItem, editTagsItem, editSizeItem, editCommentItem, hiddenItem, deleteItem)
     }
 
     fun createPartitionMenu(partition: Partition, callbacks: PartitionCallbacks): ContextMenu {
@@ -66,6 +72,10 @@ object ContextMenuFactory {
 
         val editTagsItem = MenuItem(I18n.s("menu.context.editTags")).apply {
             setOnAction { callbacks.onEditTags() }
+        }
+
+        val editSizeItem = MenuItem(I18n.s("menu.context.editSize")).apply {
+            setOnAction { callbacks.onEditSize() }
         }
 
         val editCommentItem = MenuItem(I18n.s("menu.context.editComment")).apply {
@@ -124,6 +134,15 @@ object ContextMenuFactory {
             setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(renameItem, editTagsItem, editCommentItem, optionsMenu, moveItem, hiddenItem, deleteItem)
+        return ContextMenu(
+            renameItem,
+            editTagsItem,
+            editSizeItem,
+            editCommentItem,
+            optionsMenu,
+            moveItem,
+            hiddenItem,
+            deleteItem
+        )
     }
 }

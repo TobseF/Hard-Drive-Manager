@@ -95,7 +95,7 @@ object ColumnVisibilityDialog {
 
         dialog.dialogPane.content = scrollPane
 
-        val res = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val res = DialogHelper.showDialog(dialog)
         if (!res.isPresent || res.get() != okButtonType) {
             return null
         }

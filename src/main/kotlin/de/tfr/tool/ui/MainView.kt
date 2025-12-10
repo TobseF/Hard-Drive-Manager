@@ -459,13 +459,11 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
                 }
                 reloadFromDb()
                 DialogHelper.showDialog(
-                    Alert(AlertType.INFORMATION, I18n.s("alert.db.switched", Database.getCurrentDbPath().toString())),
-                    ThemeManager.currentTheme == Theme.DARK
+                    Alert(AlertType.INFORMATION, I18n.s("alert.db.switched", Database.getCurrentDbPath().toString()))
                 )
             } catch (ex: Exception) {
                 DialogHelper.showDialog(
-                    Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
-                    ThemeManager.currentTheme == Theme.DARK
+                    Alert(AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: ""))
                 )
             }
         } else if (result.dbCleared) {
@@ -533,8 +531,7 @@ class MainView(private val primaryStage: Stage) : BorderPane() {
         // Determine the content node of the cards view (first child, not the scroll viewport)
         val contentNode = tabCards.getSnapshotContent() ?: run {
             DialogHelper.showDialog(
-                Alert(AlertType.INFORMATION, I18n.s("alert.info.noCards")),
-                ThemeManager.currentTheme == Theme.DARK
+                Alert(AlertType.INFORMATION, I18n.s("alert.info.noCards"))
             )
             return
         }

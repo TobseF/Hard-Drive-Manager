@@ -50,7 +50,15 @@ tasks.test {
     systemProperty("glass.platform", "Monocle")
     systemProperty("monocle.platform", "Headless")
     systemProperty("prism.order", "sw")
-    jvmArgs("--add-opens", "javafx.graphics/com.sun.glass.ui=ALL-UNNAMED")
+    jvmArgs(
+        "--add-opens", "javafx.graphics/com.sun.glass.ui=ALL-UNNAMED",
+        "--add-opens", "javafx.graphics/com.sun.javafx.util=ALL-UNNAMED",
+        "--add-opens", "javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED",
+        "--add-opens", "javafx.graphics/com.sun.glass.ui.monocle=ALL-UNNAMED",
+        "--add-opens", "javafx.graphics/com.sun.prism=ALL-UNNAMED",
+        "--add-exports", "javafx.graphics/com.sun.glass.ui=ALL-UNNAMED",
+        "--add-exports", "javafx.graphics/com.sun.javafx.application=ALL-UNNAMED"
+    )
 }
 
 kotlin {

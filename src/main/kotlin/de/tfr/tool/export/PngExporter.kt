@@ -1,8 +1,6 @@
 package de.tfr.tool.export
 
 import de.tfr.tool.de.tfr.tool.ui.i18n.I18n
-import de.tfr.tool.ui.Theme
-import de.tfr.tool.ui.ThemeManager
 import de.tfr.tool.ui.util.DialogHelper
 import javafx.embed.swing.SwingFXUtils
 import javafx.scene.Node
@@ -21,8 +19,7 @@ object PngExporter {
     fun exportCardsAsPng(node: Node, owner: Window?) {
         if (node.boundsInParent.width <= 0.0 || node.boundsInParent.height <= 0.0) {
             DialogHelper.showDialog(
-                Alert(Alert.AlertType.INFORMATION, I18n.s("alert.info.noCards")),
-                ThemeManager.currentTheme == Theme.DARK
+                Alert(Alert.AlertType.INFORMATION, I18n.s("alert.info.noCards"))
             )
             return
         }
@@ -39,13 +36,11 @@ object PngExporter {
             val buffered = SwingFXUtils.fromFXImage(image, null)
             ImageIO.write(buffered, "png", file)
             DialogHelper.showDialog(
-                Alert(Alert.AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath)),
-                ThemeManager.currentTheme == Theme.DARK
+                Alert(Alert.AlertType.INFORMATION, I18n.s("alert.export.success", file.absolutePath))
             )
         } catch (ex: Exception) {
             DialogHelper.showDialog(
-                Alert(Alert.AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: "")),
-                ThemeManager.currentTheme == Theme.DARK
+                Alert(Alert.AlertType.ERROR, I18n.s("alert.export.error", ex.message ?: ""))
             )
         }
     }

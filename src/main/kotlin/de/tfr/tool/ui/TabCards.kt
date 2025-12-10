@@ -6,6 +6,7 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
+import de.tfr.tool.ui.dialog.SizeEditorDialog
 import de.tfr.tool.ui.settings.TagEditorDialog
 import de.tfr.tool.ui.util.DialogHelper
 import de.tfr.tool.ui.util.TabTableNameFormatter
@@ -228,6 +229,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
                 onDelete = { confirmDeleteDisk(disk) },
                 onRename = { showRenameDiskDialog(disk) },
                 onEditTags = { showEditDiskTagsDialog(disk) },
+                onEditSize = { showEditSizeDialog(disk) },
                 onToggleHidden = { hidden ->
                     disk.hidden = hidden
                     DiskRepository.updateDisk(disk)
@@ -259,7 +261,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
         val cancelButton = ButtonType(I18n.s("btn.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE)
         alert.buttonTypes.setAll(confirmButton, cancelButton)
 
-        val result = DialogHelper.showDialog(alert, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(alert)
         if (result.isPresent && result.get() == confirmButton) {
             DiskRepository.deleteDisk(disk.id)
             onRequestRefresh()
@@ -273,6 +275,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
                 onDelete = { PartitionActions.confirmDeletePartition(partition) { onRequestRefresh() } },
                 onRename = { showRenamePartitionDialog(partition) },
                 onEditTags = { showEditPartitionTagsDialog(partition) },
+                onEditSize = { showEditSizeDialog(partition) },
                 onMove = { PartitionActions.movePartition(partition) { onRequestRefresh() } },
                 onToggleEncrypted = { newValue ->
                     partition.encrypted = newValue
@@ -318,7 +321,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
         dialog.editor.textFormatter = TabTableNameFormatter.create()
         val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
         okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val newName = result.get().trim()
             if (newName.isNotEmpty() && newName != disk.name) {
@@ -337,7 +340,7 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
         dialog.editor.textFormatter = TabTableNameFormatter.create()
         val okButton = dialog.dialogPane.lookupButton(ButtonType.OK)
         okButton.disableProperty().bind(dialog.editor.textProperty().isEmpty)
-        val result = DialogHelper.showDialog(dialog, ThemeManager.currentTheme == Theme.DARK)
+        val result = DialogHelper.showDialog(dialog)
         if (result.isPresent) {
             val newName = result.get().trim()
             if (newName.isNotEmpty() && newName != partition.name) {
@@ -361,6 +364,39 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
             partition.tags = tags.joinToString(", ")
             DiskRepository.updatePartition(partition)
             onRequestRefresh()
+        }
+    }
+
+    private fun showEditSizeDialog(item: Any) {
+        when (item) {
+            is Disk -> {
+                val dialog = SizeEditorDialog(
+                    title = I18n.s("dialog.size.title.disk", item.name),
+                    initialSizeMB = item.sizeMB,
+                    initialUsedMB = item.usedMB
+                )
+                val result = DialogHelper.showDialog(dialog)
+                result.ifPresent { (newSize, _) ->
+                    item.sizeMB = newSize
+                    DiskRepository.updateDisk(item)
+                    onRequestRefresh()
+                }
+            }
+
+            is Partition -> {
+                val dialog = SizeEditorDialog(
+                    title = I18n.s("dialog.size.title.partition", item.name),
+                    initialSizeMB = item.sizeMB,
+                    initialUsedMB = item.usedMB
+                )
+                val result = DialogHelper.showDialog(dialog)
+                result.ifPresent { (newSize, newUsed) ->
+                    item.sizeMB = newSize
+                    item.usedMB = newUsed
+                    DiskRepository.updatePartition(item)
+                    onRequestRefresh()
+                }
+            }
         }
     }
 }
