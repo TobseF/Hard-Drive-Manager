@@ -52,7 +52,8 @@ data class Partition(
     val uuidProp: SimpleStringProperty = SimpleStringProperty(""),
     val fsTypeProp: SimpleStringProperty = SimpleStringProperty(""),
     val hiddenProp: SimpleBooleanProperty = SimpleBooleanProperty(false),
-    val virtualProp: SimpleBooleanProperty = SimpleBooleanProperty(false)
+    val virtualProp: SimpleBooleanProperty = SimpleBooleanProperty(false),
+    val commentProp: SimpleStringProperty = SimpleStringProperty("")
 ) {
     var id: Long get() = idProp.get(); set(v) = idProp.set(v)
     var diskId: Long get() = diskIdProp.get(); set(v) = diskIdProp.set(v)
@@ -72,6 +73,7 @@ data class Partition(
     var fsType: String get() = fsTypeProp.get(); set(v) = fsTypeProp.set(v)
     var hidden: Boolean get() = hiddenProp.get(); set(v) = hiddenProp.set(v)
     var virtual: Boolean get() = virtualProp.get(); set(v) = virtualProp.set(v)
+    var comment: String get() = commentProp.get(); set(v) = commentProp.set(v)
 
     override fun toString(): String {
         return "Partition($letter:$name ${sizeMB.formatSize()} ($uuid))"
@@ -88,6 +90,7 @@ data class Disk(
     val serialProp: SimpleStringProperty = SimpleStringProperty(""),
     val tagProp: SimpleStringProperty = SimpleStringProperty(""),
     val hiddenProp: SimpleBooleanProperty = SimpleBooleanProperty(false),
+    val commentProp: SimpleStringProperty = SimpleStringProperty(""),
     val partitions: MutableList<Partition> = mutableListOf()
 ) {
     var id: Long get() = idProp.get(); set(v) = idProp.set(v)
@@ -102,6 +105,7 @@ data class Disk(
     var serial: String get() = serialProp.get(); set(v) = serialProp.set(v)
     var tag: String get() = tagProp.get(); set(v) = tagProp.set(v)
     var hidden: Boolean get() = hiddenProp.get(); set(v) = hiddenProp.set(v)
+    var comment: String get() = commentProp.get(); set(v) = commentProp.set(v)
     val usedMB: Double get() = partitions.sumOf { it.usedMB }
     val usedTB: Double get() = partitions.sumOf { it.usedTB }
 
@@ -151,6 +155,7 @@ object SampleDataRepository {
                 fsType = "FAT32"; type = PartitionType.Partition.name
                 hidden = true; virtual = false; encrypted = false; cloudBackup = false
                 tags = "System, Hidden"
+                comment = "EFI + Bootloader"
             }
             partitions += Partition().apply {
                 id = 2L; diskId = 1L
@@ -159,6 +164,7 @@ object SampleDataRepository {
                 fsType = "NTFS"; type = PartitionType.Partition.name
                 hidden = false; virtual = false; encrypted = true; cloudBackup = false
                 tags = "OS, Programme, Critical"
+                comment = "Primary system volume"
             }
             partitions += Partition().apply {
                 id = 3L; diskId = 1L
@@ -237,6 +243,7 @@ object SampleDataRepository {
                 fsType = "NTFS"; type = PartitionType.Partition.name
                 hidden = false; virtual = false; encrypted = false; cloudBackup = false
                 tags = "PyTorch, Datasets, LLM, No Backup"
+                comment = "Keep 15% free for staging"
             }
             partitions += Partition().apply {
                 id = 9L; diskId = 4L

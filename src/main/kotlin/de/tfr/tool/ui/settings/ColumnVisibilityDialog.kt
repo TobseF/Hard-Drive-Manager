@@ -57,7 +57,8 @@ object ColumnVisibilityDialog {
             ColumnConfig("encrypted", "col.encrypted", Settings.Table.showEncrypted),
             ColumnConfig("cloud", "col.cloud", Settings.Table.showCloud),
             ColumnConfig("virtual", "col.virtual", Settings.Table.showVirtual),
-            ColumnConfig("hidden", "col.hidden", Settings.Table.showHiddenCol)
+            ColumnConfig("hidden", "col.hidden", Settings.Table.showHiddenCol),
+            ColumnConfig("comment", "col.comment", Settings.Table.showComment)
         )
 
         val checkboxes = mutableMapOf<String, CheckBox>()
@@ -124,6 +125,7 @@ object ColumnVisibilityDialog {
         Settings.Table.showCloud = visibilityMap["cloud"] ?: true
         Settings.Table.showVirtual = visibilityMap["virtual"] ?: false
         Settings.Table.showHiddenCol = visibilityMap["hidden"] ?: true
+        Settings.Table.showComment = visibilityMap["comment"] ?: true
 
         // Save the column order
         saveColumnOrder(columns)
@@ -147,7 +149,7 @@ object ColumnVisibilityDialog {
             listOf(
                 "name", "type", "letter", "size", "used", "free", "percentText",
                 "partOfDiskBar", "bar", "tag", "model", "manufacturer", "serial",
-                "uuid", "fsType", "encrypted", "cloud", "virtual", "hidden"
+                "uuid", "fsType", "encrypted", "cloud", "virtual", "hidden", "comment"
             )
         }
     }
@@ -252,4 +254,3 @@ object ColumnVisibilityDialog {
         }
     }
 }
-

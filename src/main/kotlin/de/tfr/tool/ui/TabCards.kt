@@ -232,6 +232,18 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
                     disk.hidden = hidden
                     DiskRepository.updateDisk(disk)
                     onRequestRefresh()
+                },
+                onEditComment = {
+                    val dialog = DialogHelper.showCommentDialog(
+                        initial = disk.comment,
+                        titleKey = "dialog.comment.disk.title",
+                        promptKey = "dialog.comment.prompt"
+                    )
+                    if (dialog != null) {
+                        disk.comment = dialog
+                        DiskRepository.updateDisk(disk)
+                        onRequestRefresh()
+                    }
                 }
             )
         )
@@ -281,6 +293,18 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
                     partition.hidden = newValue
                     DiskRepository.updatePartition(partition)
                     onRequestRefresh()
+                },
+                onEditComment = {
+                    val dialog = DialogHelper.showCommentDialog(
+                        initial = partition.comment,
+                        titleKey = "dialog.comment.partition.title",
+                        promptKey = "dialog.comment.prompt"
+                    )
+                    if (dialog != null) {
+                        partition.comment = dialog
+                        DiskRepository.updatePartition(partition)
+                        onRequestRefresh()
+                    }
                 }
             )
         )

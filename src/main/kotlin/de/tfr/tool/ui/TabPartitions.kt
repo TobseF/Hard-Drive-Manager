@@ -7,6 +7,7 @@ import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
 import de.tfr.tool.ui.settings.TagEditorDialog
+import de.tfr.tool.ui.util.DialogHelper
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.Node
@@ -255,6 +256,18 @@ class TabPartitions(private val onRequestRefresh: () -> Unit = {}) : ScrollPane(
                     partition.hidden = newValue
                     DiskRepository.updatePartition(partition)
                     onRequestRefresh()
+                },
+                onEditComment = {
+                    val dialog = DialogHelper.showCommentDialog(
+                        initial = partition.comment,
+                        titleKey = "dialog.comment.partition.title",
+                        promptKey = "dialog.comment.prompt"
+                    )
+                    if (dialog != null) {
+                        partition.comment = dialog
+                        DiskRepository.updatePartition(partition)
+                        onRequestRefresh()
+                    }
                 }
             )
         )

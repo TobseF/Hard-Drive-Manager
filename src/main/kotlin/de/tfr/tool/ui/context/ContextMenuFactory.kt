@@ -13,7 +13,8 @@ object ContextMenuFactory {
         val onDelete: () -> Unit,
         val onRename: () -> Unit,
         val onEditTags: () -> Unit,
-        val onToggleHidden: (Boolean) -> Unit
+        val onToggleHidden: (Boolean) -> Unit,
+        val onEditComment: () -> Unit
     )
 
     data class PartitionCallbacks(
@@ -24,7 +25,8 @@ object ContextMenuFactory {
         val onToggleEncrypted: (Boolean) -> Unit,
         val onToggleCloud: (Boolean) -> Unit,
         val onToggleVirtual: (Boolean) -> Unit,
-        val onToggleHidden: (Boolean) -> Unit
+        val onToggleHidden: (Boolean) -> Unit,
+        val onEditComment: () -> Unit
     )
 
     fun createDiskMenu(disk: Disk, callbacks: DiskCallbacks): ContextMenu {
@@ -34,6 +36,10 @@ object ContextMenuFactory {
 
         val editTagsItem = MenuItem(I18n.s("menu.context.editTags")).apply {
             setOnAction { callbacks.onEditTags() }
+        }
+
+        val editCommentItem = MenuItem(I18n.s("menu.context.editComment")).apply {
+            setOnAction { callbacks.onEditComment() }
         }
 
         val hiddenItem = CheckMenuItem(I18n.s("menu.context.hidden")).apply {
@@ -50,7 +56,7 @@ object ContextMenuFactory {
             setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(renameItem, editTagsItem, hiddenItem, deleteItem)
+        return ContextMenu(renameItem, editTagsItem, editCommentItem, hiddenItem, deleteItem)
     }
 
     fun createPartitionMenu(partition: Partition, callbacks: PartitionCallbacks): ContextMenu {
@@ -60,6 +66,10 @@ object ContextMenuFactory {
 
         val editTagsItem = MenuItem(I18n.s("menu.context.editTags")).apply {
             setOnAction { callbacks.onEditTags() }
+        }
+
+        val editCommentItem = MenuItem(I18n.s("menu.context.editComment")).apply {
+            setOnAction { callbacks.onEditComment() }
         }
 
         val encryptedItem = CheckMenuItem(I18n.s("menu.context.encrypted")).apply {
@@ -114,6 +124,6 @@ object ContextMenuFactory {
             setOnAction { callbacks.onDelete() }
         }
 
-        return ContextMenu(renameItem, editTagsItem, optionsMenu, moveItem, hiddenItem, deleteItem)
+        return ContextMenu(renameItem, editTagsItem, editCommentItem, optionsMenu, moveItem, hiddenItem, deleteItem)
     }
 }

@@ -74,6 +74,7 @@ class TabTable(
     private lateinit var cloudCol: TreeTableColumn<Any, Boolean>
     private lateinit var virtualCol: TreeTableColumn<Any, Boolean>
     private lateinit var hiddenCol: TreeTableColumn<Any, Boolean>
+    private lateinit var commentCol: TreeTableColumn<Any, String>
 
     // last provided dataset, needed for certain tooltips
     private var currentDisks: List<Disk> = emptyList()
@@ -534,6 +535,101 @@ class TabTable(
             }
         }
 
+        commentCol = TreeTableColumn<Any, String>(I18n.s("col.comment")).apply {
+            prefWidth = 260.0
+            isEditable = true
+            setCellValueFactory { data ->
+                when (val v = data.value.value) {
+                    is Disk -> SimpleStringProperty(v.comment)
+                    is Partition -> SimpleStringProperty(v.comment)
+                    else -> SimpleStringProperty("")
+                }
+            }
+            cellFactory = {
+                object : TreeTableCell<Any, String>() {
+                    private val display = Label().apply {
+                        isWrapText = false
+                        textOverrun = OverrunStyle.ELLIPSIS
+                        alignment = Pos.CENTER_LEFT
+                        style = "-fx-font-size: 12px;"
+                        maxWidth = Double.MAX_VALUE
+                    }
+                    private val editor = TextArea().apply {
+                        isWrapText = true
+                        prefRowCount = 3
+                        textProperty().addListener { _, old, new ->
+                            if (new.length > 500) {
+                                text = old ?: new.take(500)
+                                positionCaret(text.length)
+                            }
+                        }
+                        focusedProperty().addListener { _, _, focused ->
+                            if (!focused && isEditing) commitEdit(text.trim())
+                        }
+                    }
+
+                    init {
+                        graphic = display
+                    }
+
+                    override fun startEdit() {
+                        if (!treeTableView.isEditable || !tableColumn.isEditable) return
+                        super.startEdit()
+                        editor.text = item ?: ""
+                        editor.positionCaret(editor.text.length)
+                        graphic = editor
+                        text = null
+                        editor.requestFocus()
+                    }
+
+                    override fun cancelEdit() {
+                        super.cancelEdit()
+                        graphic = display
+                        updateDisplay(item)
+                    }
+
+                    override fun commitEdit(newValue: String) {
+                        super.commitEdit(newValue.trim())
+                        graphic = display
+                        updateDisplay(newValue)
+                    }
+
+                    override fun updateItem(item: String?, empty: Boolean) {
+                        super.updateItem(item, empty)
+                        if (empty) {
+                            text = null
+                            graphic = null
+                        } else {
+                            updateDisplay(item)
+                            if (!isEditing) {
+                                graphic = display
+                                text = null
+                            }
+                        }
+                    }
+
+                    private fun updateDisplay(value: String?) {
+                        display.text = value?.takeIf { it.isNotBlank() } ?: "-"
+                    }
+                }
+            }
+            setOnEditCommit { ev ->
+                val newValue = ev.newValue.trim()
+                when (val item = ev.rowValue.value) {
+                    is Disk -> {
+                        item.comment = newValue
+                        DiskRepository.updateDisk(item)
+                    }
+
+                    is Partition -> {
+                        item.comment = newValue
+                        DiskRepository.updatePartition(item)
+                    }
+                }
+                onDataChanged()
+            }
+        }
+
         modelCol = TreeTableColumn<Any, String>(I18n.s("col.model")).apply {
             prefWidth = 180.0
             setCellValueFactory { data ->
@@ -696,6 +792,7 @@ class TabTable(
             partOfDiskBarCol,
             barCol,
             tagCol,
+            commentCol,
             modelCol,
             manufacturerCol,
             serialCol,
@@ -734,6 +831,7 @@ class TabTable(
                     cloudCol -> "cloud"
                     virtualCol -> "virtual"
                     hiddenCol -> "hidden"
+                    commentCol -> "comment"
                     else -> null
                 }
 
@@ -795,6 +893,7 @@ class TabTable(
         cloudCol.text = I18n.s("col.cloud")
         virtualCol.text = I18n.s("col.virtual")
         hiddenCol.text = I18n.s("col.hidden")
+        commentCol.text = I18n.s("col.comment")
 
         // Context menu items
         deleteMenuItem.text = I18n.s("menu.context.delete")
@@ -966,7 +1065,8 @@ class TabTable(
             "encrypted" to Settings.Table.showEncrypted,
             "cloud" to Settings.Table.showCloud,
             "virtual" to Settings.Table.showVirtual,
-            "hidden" to Settings.Table.showHiddenCol
+            "hidden" to Settings.Table.showHiddenCol,
+            "comment" to Settings.Table.showComment
         )
 
         val columnMap = mapOf(
@@ -988,7 +1088,8 @@ class TabTable(
             "encrypted" to encCol,
             "cloud" to cloudCol,
             "virtual" to virtualCol,
-            "hidden" to hiddenCol
+            "hidden" to hiddenCol,
+            "comment" to commentCol
         )
 
         // Get the saved column order from settings
@@ -1059,6 +1160,18 @@ class TabTable(
                         value.hidden = newValue
                         DiskRepository.updatePartition(value)
                         onDataChanged()
+                    },
+                    onEditComment = {
+                        val dialog = DialogHelper.showCommentDialog(
+                            initial = value.comment,
+                            titleKey = "dialog.comment.partition.title",
+                            promptKey = "dialog.comment.prompt"
+                        )
+                        if (dialog != null) {
+                            value.comment = dialog
+                            DiskRepository.updatePartition(value)
+                            onDataChanged()
+                        }
                     }
                 )
             ).items.toList()
@@ -1073,6 +1186,18 @@ class TabTable(
                         value.hidden = hidden
                         DiskRepository.updateDisk(value)
                         onDataChanged()
+                    },
+                    onEditComment = {
+                        val dialog = DialogHelper.showCommentDialog(
+                            initial = value.comment,
+                            titleKey = "dialog.comment.disk.title",
+                            promptKey = "dialog.comment.prompt"
+                        )
+                        if (dialog != null) {
+                            value.comment = dialog
+                            DiskRepository.updateDisk(value)
+                            onDataChanged()
+                        }
                     }
                 )
             ).items.toList()

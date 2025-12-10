@@ -36,7 +36,7 @@ object DiskRepository {
         val disks = mutableListOf<Disk>()
         conn.createStatement().use { st ->
             val rs =
-                st.executeQuery("SELECT id, name, size_mb, type, model, manufacturer, serial, tag, hidden FROM disks ORDER BY name ASC")
+                st.executeQuery("SELECT id, name, size_mb, type, model, manufacturer, serial, tag, hidden, comment FROM disks ORDER BY name ASC")
             while (rs.next()) {
                 disks += rs.toDisk()
             }
@@ -44,7 +44,7 @@ object DiskRepository {
         // partitions
         conn.createStatement().use { st ->
             val rs =
-                st.executeQuery("SELECT id, disk_id, name, letter, type, size_mb, used_mb, tags, encrypted, cloud_backup, uuid, fs_type, hidden, virtual FROM partitions ORDER BY id ASC")
+                st.executeQuery("SELECT id, disk_id, name, letter, type, size_mb, used_mb, tags, encrypted, cloud_backup, uuid, fs_type, hidden, virtual, comment FROM partitions ORDER BY id ASC")
             while (rs.next()) {
                 val p = rs.toPartition()
                 disks.find { it.id == p.diskId }?.partitions?.add(p)
@@ -55,7 +55,7 @@ object DiskRepository {
 
     fun insertDisk(d: Disk): Long {
         val sql =
-            "INSERT INTO disks(name, size_mb, type, model, manufacturer, serial, tag, hidden) VALUES(?,?,?,?,?,?,?,?)"
+            "INSERT INTO disks(name, size_mb, type, model, manufacturer, serial, tag, hidden, comment) VALUES(?,?,?,?,?,?,?,?,?)"
         Database.connection().prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS).use { ps ->
             ps.setString(1, d.name)
             ps.setDouble(2, d.sizeMB)
@@ -65,6 +65,7 @@ object DiskRepository {
             ps.setString(6, d.serial)
             ps.setString(7, d.tag)
             ps.setInt(8, if (d.hidden) 1 else 0)
+            ps.setString(9, d.comment)
             ps.executeUpdate()
             ps.generatedKeys.use { keys ->
                 return if (keys.next()) keys.getLong(1) else 0L
@@ -74,7 +75,7 @@ object DiskRepository {
 
     fun updateDisk(d: Disk) {
         val sql =
-            "UPDATE disks SET name=?, size_mb=?, type=?, model=?, manufacturer=?, serial=?, tag=?, hidden=? WHERE id=?"
+            "UPDATE disks SET name=?, size_mb=?, type=?, model=?, manufacturer=?, serial=?, tag=?, hidden=?, comment=? WHERE id=?"
         Database.connection().prepareStatement(sql).use { ps ->
             ps.setString(1, d.name)
             ps.setDouble(2, d.sizeMB)
@@ -84,7 +85,8 @@ object DiskRepository {
             ps.setString(6, d.serial)
             ps.setString(7, d.tag)
             ps.setInt(8, if (d.hidden) 1 else 0)
-            ps.setLong(9, d.id)
+            ps.setString(9, d.comment)
+            ps.setLong(10, d.id)
             ps.executeUpdate()
         }
     }
@@ -98,7 +100,7 @@ object DiskRepository {
 
     fun insertPartition(p: Partition): Long {
         val sql =
-            "INSERT INTO partitions(disk_id, name, letter, type, size_mb, used_mb, tags, encrypted, cloud_backup, uuid, fs_type, hidden, virtual) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            "INSERT INTO partitions(disk_id, name, letter, type, size_mb, used_mb, tags, encrypted, cloud_backup, uuid, fs_type, hidden, virtual, comment) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         Database.connection().prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS).use { ps ->
             ps.setLong(1, p.diskId)
             ps.setString(2, p.name)
@@ -113,6 +115,7 @@ object DiskRepository {
             ps.setString(11, p.fsType)
             ps.setInt(12, if (p.hidden) 1 else 0)
             ps.setInt(13, if (p.virtual) 1 else 0)
+            ps.setString(14, p.comment)
             ps.executeUpdate()
             ps.generatedKeys.use { keys ->
                 return if (keys.next()) keys.getLong(1) else 0L
@@ -122,7 +125,7 @@ object DiskRepository {
 
     fun updatePartition(p: Partition) {
         val sql =
-            "UPDATE partitions SET disk_id=?, name=?, letter=?, type=?, size_mb=?, used_mb=?, tags=?, encrypted=?, cloud_backup=?, uuid=?, fs_type=?, hidden=?, virtual=? WHERE id=?"
+            "UPDATE partitions SET disk_id=?, name=?, letter=?, type=?, size_mb=?, used_mb=?, tags=?, encrypted=?, cloud_backup=?, uuid=?, fs_type=?, hidden=?, virtual=?, comment=? WHERE id=?"
         Database.connection().prepareStatement(sql).use { ps ->
             ps.setLong(1, p.diskId)
             ps.setString(2, p.name)
@@ -137,7 +140,8 @@ object DiskRepository {
             ps.setString(11, p.fsType)
             ps.setInt(12, if (p.hidden) 1 else 0)
             ps.setInt(13, if (p.virtual) 1 else 0)
-            ps.setLong(14, p.id)
+            ps.setString(14, p.comment)
+            ps.setLong(15, p.id)
             ps.executeUpdate()
         }
     }
@@ -159,6 +163,10 @@ object DiskRepository {
         try { serial = getString("serial") } catch (_: Exception) {}
         tag = getString("tag")
         try { hidden = getInt("hidden") != 0 } catch (_: Exception) {}
+        try {
+            comment = getString("comment")
+        } catch (_: Exception) {
+        }
     }
 
     private fun ResultSet.toPartition(): Partition = Partition().apply {
@@ -178,6 +186,10 @@ object DiskRepository {
         try { hidden = getInt("hidden") != 0 } catch (_: Exception) {}
         try {
             virtual = getInt("virtual") != 0
+        } catch (_: Exception) {
+        }
+        try {
+            comment = getString("comment")
         } catch (_: Exception) {
         }
     }

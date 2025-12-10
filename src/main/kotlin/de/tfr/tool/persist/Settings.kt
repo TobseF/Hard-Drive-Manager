@@ -50,6 +50,7 @@ object Settings {
         var showCloud by BooleanProp("table.col.showCloud", true)
         var showVirtual by BooleanProp("table.col.showVirtual", false)
         var showHiddenCol by BooleanProp("table.col.showHidden", true)
+        var showComment by BooleanProp("table.col.showComment", true)
     }
 
     class StringProp(private val key: String, private val defaultValue: String = "", private val trim: Boolean = true) {

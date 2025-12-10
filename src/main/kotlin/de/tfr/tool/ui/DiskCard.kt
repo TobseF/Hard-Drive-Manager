@@ -76,11 +76,6 @@ class DiskCard(val disk: Disk) : StackPane() {
 
     private fun applyPartitionHover(part: PartViews, hovered: Boolean) {
         part.hovered = hovered
-        if (hovered) {
-            suspendDiskTooltip()
-        } else if (parts.none { it.hovered }) {
-            resumeDiskTooltip()
-        }
         updatePartitionChrome(part, currentTheme)
     }
 
@@ -138,9 +133,6 @@ class DiskCard(val disk: Disk) : StackPane() {
         diskTooltipInstalled = false
     }
 
-    private fun suspendDiskTooltip() = uninstallDiskTooltip()
-
-    private fun resumeDiskTooltip() = installDiskTooltip()
 
     private fun refreshPartitionTooltip(part: PartViews) {
         part.tooltip?.let { Tooltip.uninstall(part.stack, it) }

@@ -29,7 +29,8 @@ object Database {
               size_mb REAL NOT NULL DEFAULT 0,
               type TEXT NOT NULL,
               model TEXT NOT NULL DEFAULT '',
-              tag TEXT NOT NULL DEFAULT ''
+              tag TEXT NOT NULL DEFAULT '',
+              comment TEXT NOT NULL DEFAULT ''
             );
         """.trimIndent()
 
@@ -43,6 +44,7 @@ object Database {
               size_mb REAL NOT NULL DEFAULT 0,
               used_mb REAL NOT NULL DEFAULT 0,
               tags TEXT NOT NULL DEFAULT '',
+              comment TEXT NOT NULL DEFAULT '',
               FOREIGN KEY(disk_id) REFERENCES disks(id) ON DELETE CASCADE
             );
         """.trimIndent()
@@ -136,6 +138,11 @@ object Database {
                 st.execute("ALTER TABLE partitions ADD COLUMN virtual INTEGER NOT NULL DEFAULT 0")
             }
         }
+        if (!existing.contains("comment")) {
+            conn.createStatement().use { st ->
+                st.execute("ALTER TABLE partitions ADD COLUMN comment TEXT NOT NULL DEFAULT ''")
+            }
+        }
     }
 
     private fun ensureDiskColumns() {
@@ -160,6 +167,11 @@ object Database {
         if (!existing.contains("hidden")) {
             conn.createStatement().use { st ->
                 st.execute("ALTER TABLE disks ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+        if (!existing.contains("comment")) {
+            conn.createStatement().use { st ->
+                st.execute("ALTER TABLE disks ADD COLUMN comment TEXT NOT NULL DEFAULT ''")
             }
         }
     }
