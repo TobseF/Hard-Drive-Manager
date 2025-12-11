@@ -39,7 +39,7 @@ object OshiImporter {
         // Load existing disks and build lookup maps
         val existingDisks = DiskRepository.loadAll()
         val diskBySerial = existingDisks.associateBy { it.serial.trim().lowercase() }.toMutableMap()
-        val disksByModelSize =
+        val disksByModelSize: MutableMap<String, Disk> =
             existingDisks.associateBy { (it.model.trim().lowercase()) + "|" + it.sizeTB.toString() }.toMutableMap()
         // Additional lookup map for name + size (for disks without serial number)
         val disksByNameSize =
@@ -61,8 +61,6 @@ object OshiImporter {
 
         // Disk stores from hardware layer
         val hwDiskStores = hardwareAbstractionLayer.diskStores
-
-
 
         val partitionCandidates = mutableListOf<PartitionCandidate>()
 
@@ -90,7 +88,7 @@ object OshiImporter {
         fileStores.forEach { store ->
             val sUuid = (store.uuid ?: "").trim()
             val sMount = (store.mount ?: store.name ?: "").trim()
-            val candidate = findCandidate(sUuid, sMount)
+            val candidate: PartitionCandidate? = findCandidate(sUuid, sMount)
             val usedMB = bytesToMB(store.totalSpace - store.usableSpace)
             if (candidate != null) {
                 candidate.usedMB = usedMB
@@ -119,20 +117,10 @@ object OshiImporter {
             // Try to reuse existing disk with name "Unknown Disk" if present
             unknownDisk = existingDisks.firstOrNull { it.name == "Unknown Disk" }
             if (unknownDisk == null) {
-                val d = Disk().apply {
-                    name = "Unknown Disk"
-                    type = ""
-                    model = ""
-                    manufacturer = ""
-                    serial = ""
-                    sizeTB = 0.0
-                    tag = ""
-                }
-                val newId = DiskRepository.insertDisk(d)
-                d.id = newId
-                existingDisks += d
-                disksByModelSize[d.model.lowercase() + "|" + d.sizeTB.toString()] = d
-                unknownDisk = d
+                val disk = createUnknowDisk()
+                existingDisks += disk
+                disksByModelSize[disk.model.lowercase() + "|" + disk.sizeTB.toString()] = disk
+                unknownDisk = disk
                 disksInserted.incrementAndGet()
             }
             return unknownDisk!!
@@ -257,7 +245,8 @@ object OshiImporter {
         }
 
         // 4. Process disks without partitions that haven't been processed yet
-        hwDiskStores.filterNot { it in processedDiskStores }.forEach { diskStore ->
+        val missingDisks = hwDiskStores.filterNot { it in processedDiskStores }
+        missingDisks.forEach { diskStore ->
             val serial = (diskStore.serial ?: "").trim()
             val modelSystemInfo = (diskStore.model ?: "").trim()
             val manufacturer = guessManufacturer(modelSystemInfo)
@@ -321,6 +310,21 @@ object OshiImporter {
         return Result(disksUpdated.get(), disksInserted.get(), partitionsUpdated.get(), partitionsInserted.get())
     }
 
+    private fun createUnknowDisk(): Disk {
+        val d = Disk().apply {
+            name = "Unknown Disk"
+            type = ""
+            model = ""
+            manufacturer = ""
+            serial = ""
+            sizeTB = 0.0
+            tag = ""
+        }
+        val newId = DiskRepository.insertDisk(d)
+        d.id = newId
+        return d
+    }
+
     // Candidate structure for partition-first processing
     data class PartitionCandidate(
         val uuid: String,
@@ -331,7 +335,14 @@ object OshiImporter {
         var label: String = "",
         var mountPoint: String = "",
         var fsType: String = ""
-    )
+    ) {
+        override fun toString(): String {
+            return "$mountRaw $label : $sizeGB GB ($uuid)"
+        }
+
+        val sizeMB = bytesToMB(sizeBytes)
+        val sizeGB = bytesToGB(sizeBytes)
+    }
 
     /**
      * Reads the model name out of the localized system model info.
@@ -381,6 +392,11 @@ object OshiImporter {
         if (bytes <= 0) return 0.0
         return bytes.toDouble() / (1024.0 * 1024.0)
     }
+
+    fun bytesToGB(bytes: Long): Double {
+        if (bytes <= 0) return 0.0
+        return bytesToMB(bytes) / (1024.0)
+    }
 }
 
 private fun Partition.applyPartition(
@@ -397,7 +413,9 @@ private fun Partition.applyPartition(
     val fsType = partitionCandidate.fsType
     val label = partitionCandidate.label
 
-    if (this.diskId != disk.id) {
+    // Only update diskId if partition was not manually assigned to a different disk by the user.
+    // If diskStore is null (Unknown Disk), preserve the user's assignment.
+    if (this.diskId != disk.id && partitionCandidate.diskStore != null) {
         this.diskId = disk.id; changed = true
     }
     if (this.name != label && label.isNotEmpty()) {
