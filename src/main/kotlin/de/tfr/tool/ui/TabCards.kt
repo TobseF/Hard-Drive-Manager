@@ -6,6 +6,7 @@ import de.tfr.tool.model.Partition
 import de.tfr.tool.persist.DiskRepository
 import de.tfr.tool.ui.context.ContextMenuFactory
 import de.tfr.tool.ui.context.PartitionActions
+import de.tfr.tool.ui.dialog.PartitionInfo
 import de.tfr.tool.ui.dialog.SizeEditorDialog
 import de.tfr.tool.ui.settings.TagEditorDialog
 import de.tfr.tool.ui.util.DialogHelper
@@ -384,10 +385,25 @@ class TabCards(private val onRequestRefresh: () -> Unit = {}) : ScrollPane() {
             }
 
             is Partition -> {
+                // Find the parent disk for this partition
+                val parentDisk = currentDisks.find { it.id == item.diskId }
+
+                // Build partition info list for bar chart
+                val partitionInfoList = parentDisk?.partitions?.map { p ->
+                    PartitionInfo(
+                        name = p.name,
+                        sizeMB = p.sizeMB,
+                        isEditing = p.id == item.id
+                    )
+                } ?: emptyList()
+
                 val dialog = SizeEditorDialog(
                     title = I18n.s("dialog.size.title.partition", item.name),
                     initialSizeMB = item.sizeMB,
-                    initialUsedMB = item.usedMB
+                    initialUsedMB = item.usedMB,
+                    diskSizeMB = parentDisk?.sizeMB,
+                    allPartitions = partitionInfoList,
+                    editingPartitionName = item.name
                 )
                 val result = DialogHelper.showDialog(dialog)
                 result.ifPresent { (newSize, newUsed) ->
