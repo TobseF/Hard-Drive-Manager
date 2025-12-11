@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://jdk.java.net/23/"><img alt="Java 23" src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/badge-java-23.svg" height="20" /></a>
   <a href="https://openjfx.io"><img alt="Java FX 25" src="https://raw.githubusercontent.com/TobseF/Hard-Drive-Manager/docs/img/badge-java-fx-25.svg" height="20" /></a>
-  <a href="https://kotlinlang.org/docs/whatsnew22.html"><img alt="Kotlin 2.2.0" src="https://img.shields.io/badge/Kotlin-2.2.20-7F52FF.svg?style=flat-square&logo=Kotlin&logoColor=white" /></a>
+  <a href="https://kotlinlang.org/docs/whatsnew22.html"><img alt="Kotlin 2.3.0-RC3" src="https://img.shields.io/badge/Kotlin-2.3.0-7F52FF.svg?style=flat-square&logo=Kotlin&logoColor=white" /></a>
   <a href="https://github.com/TobseF/Hard-Drive-Manager/actions/workflows/gradle-tests.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/TobseF/Hard-Drive-Manager/gradle-tests.yml?style=flat-square&branch=main" /></a>
 </p>
 

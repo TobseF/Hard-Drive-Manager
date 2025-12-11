@@ -1,7 +1,5 @@
-import org.jetbrains.kotlin.gradle.internal.util.collectionUtils.concat
-
 plugins {
-    kotlin("jvm") version "2.3.0-Beta2"
+    kotlin("jvm") version "2.3.0-RC3"
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
     id("org.beryx.runtime") version "1.13.1"
@@ -115,7 +113,7 @@ runtime {
             installerOptions = listOf(
                 "--win-menu",
                 "--win-shortcut"
-            ).concat(options)?.toMutableList()
+            ) + (options).toMutableList()
         } else if (isMac) {
             imageOptions = listOf("--icon", "src/main/resources/icon.icns")
             installerType = "dmg"
