@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.internal.util.collectionUtils.concat
+
 plugins {
     kotlin("jvm") version "2.3.0-Beta2"
     application
@@ -85,6 +87,11 @@ javafx {
     modules = fxModules
 }
 
+// Define installer type based on current OS
+val osName = System.getProperty("os.name").lowercase()
+val isWindows = osName.contains("win")
+val isMac = osName.contains("mac")
+
 runtime {
     modules.set(runtimeModules)
     options.set(listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages"))
@@ -93,24 +100,32 @@ runtime {
         noConsole = true
         jvmArgs = application.applicationDefaultJvmArgs.toMutableList()
     }
+
     jpackage {
         imageName = "Hard Drive Manager"
         appVersion = version.toString()
-        imageOptions = listOf("--icon", "src/main/resources/icon.ico")
-        installerType = "msi"
-        installerOptions = listOf(
-            "--win-menu",
-            "--win-shortcut",
+        val options = listOf(
             "--vendor",
             "TobseF",
             "--description",
-            "Inventory explore, and manage your storage devices like a pro!"
-        )
+            "Inventory explore, and manage your storage devices like a pro!")
+        if (isWindows) {
+            imageOptions = listOf("--icon", "src/main/resources/icon.ico")
+            installerType = "msi"
+            installerOptions = listOf(
+                "--win-menu",
+                "--win-shortcut"
+            ).concat(options)?.toMutableList()
+        } else if (isMac) {
+            imageOptions = listOf("--icon", "src/main/resources/icon.icns")
+            installerType = "dmg"
+            installerOptions = options
+        }
     }
 }
 
 tasks.register("packageInstaller") {
     dependsOn(tasks.named("jpackage"))
     group = "distribution"
-    description = "Erzeugt einen Plattform-Installer mit eingebetteter JRE."
+    description = "Creates a platform installer with embedded JRE for Windows (MSI) or macOS (DMG)."
 }
